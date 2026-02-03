@@ -213,8 +213,6 @@ resource "aws_instance" "openclaw" {
     s3_bucket         = aws_s3_bucket.backups.bucket
     aws_region        = var.aws_region
     anthropic_api_key = var.anthropic_api_key
-    slack_bot_token   = var.slack_bot_token
-    slack_app_token   = var.slack_app_token
   }))
 
   metadata_options {

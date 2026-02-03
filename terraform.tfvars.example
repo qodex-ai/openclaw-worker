@@ -17,8 +17,3 @@ my_ip_cidrs = ["YOUR_IP_HERE/32"]
 # ANTHROPIC API KEY - REQUIRED
 # Get from: https://console.anthropic.com/
 anthropic_api_key = "sk-ant-YOUR-KEY-HERE"
-
-# SLACK TOKENS - REQUIRED
-# You already have these from your local OpenClaw setup
-slack_bot_token = "xoxb-YOUR-BOT-TOKEN"
-slack_app_token = "xapp-YOUR-APP-TOKEN"
