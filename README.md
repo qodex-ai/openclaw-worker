@@ -12,6 +12,7 @@
 ## ⚡ TL;DR
 
 ```bash
+# Clone repository
 git clone https://github.com/qodex-ai/openclaw-worker.git
 cd openclaw-worker
 
@@ -26,11 +27,13 @@ nano terraform.tfvars  # Add your IP and Anthropic API key
 
 # Deploy
 terraform init
-terraform apply  # Type 'yes'
-terraform output -raw dashboard_url_with_token  # Copy this URL
+terraform apply  # Type 'yes' when prompted
+
+# Wait 5-8 minutes for bootstrap, then get dashboard URL
+terraform output -raw dashboard_url_with_token
 ```
 
-Wait 5 minutes for setup, then open the URL. Done! ✅
+Open the URL in your browser. Done! ✅
 
 For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
@@ -118,47 +121,71 @@ git clone https://github.com/qodex-ai/openclaw-worker.git
 cd openclaw-worker
 ```
 
-### 2. Get your public IP
+### 2. Setup AWS Credentials
 
 ```bash
-curl ifconfig.me
+cp .aws.env.example .aws.env
+nano .aws.env
 ```
 
-### 3. Create your configuration
+Add your AWS credentials:
+```bash
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+Load credentials:
+```bash
+source .aws.env
+aws sts get-caller-identity  # Verify they work
+```
+
+### 3. Get Your Public IP
+
+```bash
+curl -4 ifconfig.me  # Returns your IPv4 address
+```
+
+### 4. Configure Terraform Variables
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
+nano terraform.tfvars
 ```
 
-Edit `terraform.tfvars`:
-
+Edit with your values:
 ```hcl
 aws_region    = "us-east-1"
 instance_type = "t3.medium"
 
-# Your IP address (REQUIRED) - add /32 at the end
-my_ip_cidrs = ["203.0.113.50/32"]
+# Your IP (add /32 at the end)
+my_ip_cidrs = ["49.47.128.13/32"]
 
-# Your Anthropic API key (REQUIRED)
+# Your Anthropic API key
 anthropic_api_key = "sk-ant-api03-xxxxx"
 ```
 
-### 4. Deploy
+### 5. Deploy Infrastructure
 
 ```bash
 terraform init
 terraform apply
 ```
 
-Type `yes` when prompted. Wait ~5 minutes.
+Type `yes` when prompted. Wait ~3 minutes for AWS resources.
 
-### 5. Get your dashboard URL
+### 6. Wait for Bootstrap & Get Dashboard URL
+
+The EC2 instance will auto-install OpenClaw (5-8 minutes). Then:
 
 ```bash
 terraform output -raw dashboard_url_with_token
 ```
 
-Open in browser — done! 🎉
+Open the URL in your browser — done! 🎉
+
+**Note**: Configure Slack and S3 backups through OpenClaw's dashboard after deployment.
 
 ---
 
@@ -335,33 +362,56 @@ aws_region = "ap-south-1" # Mumbai
 
 ## 🐛 Troubleshooting
 
-### Can't connect to dashboard
+### Terraform: "Failed to load plugin schemas" (macOS)
 
-1. Check your IP hasn't changed: `curl ifconfig.me`
+If you get a timeout error with AWS provider on macOS:
+
+```bash
+# Remove Gatekeeper quarantine from Terraform providers
+xattr -r -d com.apple.quarantine .terraform/providers/
+
+# Then retry
+terraform plan
+```
+
+This happens because macOS Gatekeeper blocks unsigned provider binaries.
+
+### AWS Credentials Not Working
+
+```bash
+# Test credentials
+source .aws.env
+aws sts get-caller-identity
+
+# If it fails, verify the .env file has 'export' statements:
+cat .aws.env  # Should show: export AWS_ACCESS_KEY_ID=...
+```
+
+### Can't Connect to Dashboard
+
+1. Check your IP hasn't changed: `curl -4 ifconfig.me`
 2. Update `terraform.tfvars` with new IP
 3. Run `terraform apply`
 
-### OpenClaw not starting
+### OpenClaw Not Starting
 
 ```bash
-# SSH in and check logs
+# SSH into server
 $(terraform output -raw ssh_command)
+
+# Check service status
+oc status
+
+# View logs
 oc logs
 
 # Check bootstrap log
 sudo cat /var/log/openclaw-bootstrap.log
 ```
 
-### Slack not connecting
+### Manual Backup Not Working
 
-```bash
-# SSH in and check config
-$(terraform output -raw ssh_command)
-cat ~/.openclaw/config.json
-
-# Check logs for Slack errors
-oc logs | grep -i slack
-```
+Ensure the EC2 instance has S3 access (IAM role automatically configured by Terraform).
 
 ---
 

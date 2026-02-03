@@ -178,18 +178,24 @@ Instead of saving credentials with `aws configure`, we'll use a `.env` file for 
 ## Step 5.1: Create AWS Credentials File
 
 ```bash
-cd ~/openclaw-infra
-cat > .aws.env << 'EOF'
-# AWS Credentials for Terraform
-# Keep this file secure and never commit to git!
-
-AWS_ACCESS_KEY_ID=AKIA________________
-AWS_SECRET_ACCESS_KEY=________________________________________
-AWS_DEFAULT_REGION=us-east-1
-EOF
+cd ~/openclaw-worker
+cp .aws.env.example .aws.env
+nano .aws.env
 ```
 
-**Replace the placeholder values** with your actual access key and secret key from Step 3.3.
+Update with your credentials from Step 3.3:
+
+```bash
+# AWS Credentials for Terraform & AWS CLI
+export AWS_ACCESS_KEY_ID=AKIA________________
+export AWS_SECRET_ACCESS_KEY=________________________________________
+export AWS_DEFAULT_REGION=us-east-1
+export AWS_DEFAULT_OUTPUT=json
+```
+
+**Important**: The `export` keyword is required!
+
+Save: `Ctrl+X`, then `Y`, then `Enter`
 
 ## Step 5.2: Secure the File
 
@@ -203,11 +209,22 @@ chmod 600 .aws.env
 source .aws.env
 ```
 
-## Step 5.4: Verify
+## Step 5.4: Verify Credentials Work
 
 ```bash
 aws sts get-caller-identity
 ```
+
+You should see:
+```json
+{
+    "UserId": "AIDAY7Z2J3C6...",
+    "Account": "123456789012",
+    "Arn": "arn:aws:iam::123456789012:user/admin"
+}
+```
+
+✅ Credentials are working!
 
 You should see your account ID and user ARN.
 
@@ -302,7 +319,14 @@ terraform init
 terraform plan
 ```
 
-Should show ~12 resources to create.
+Should show ~17 resources to create.
+
+**If you get "Failed to load plugin schemas" error (macOS only)**:
+```bash
+# Remove Gatekeeper quarantine
+xattr -r -d com.apple.quarantine .terraform/providers/
+terraform plan
+```
 
 ## Step 8.3: Deploy
 
@@ -310,7 +334,11 @@ Should show ~12 resources to create.
 terraform apply
 ```
 
-Type **`yes`** when prompted. Wait 3-5 minutes.
+Type **`yes`** when prompted.
+
+AWS resource creation: ~3-5 minutes
+EC2 bootstrap (Node.js, Docker, OpenClaw): ~5-8 minutes
+**Total**: ~10-13 minutes
 
 ## Step 8.4: Save Outputs
 
@@ -529,3 +557,137 @@ oc status | logs | restart | backup | update | url
 ---
 
 🦞 **Enjoy your private OpenClaw on AWS!**
+
+
+---
+
+# 🐛 Troubleshooting
+
+## Terraform Issues
+
+### Error: "Failed to load plugin schemas" (macOS)
+
+**Symptom**: Terraform plan/apply fails with "timeout while waiting for plugin to start"
+
+**Solution**:
+```bash
+# Remove macOS Gatekeeper quarantine from providers
+xattr -r -d com.apple.quarantine .terraform/providers/
+terraform plan
+```
+
+### Error: "Invalid function argument" in user_data.sh
+
+**Symptom**: Template variable not found
+
+**Solution**: Make sure you have the latest version:
+```bash
+git pull origin main
+terraform init -upgrade
+```
+
+## AWS Credential Issues
+
+### Error: "InvalidClientTokenId"
+
+**Symptom**: AWS rejects your credentials
+
+**Check**:
+1. Verify credentials file has `export` statements:
+```bash
+cat .aws.env | head -5
+# Should show: export AWS_ACCESS_KEY_ID=...
+```
+
+2. Test credentials directly:
+```bash
+source .aws.env
+aws sts get-caller-identity
+```
+
+3. If still failing, create new access keys in AWS Console (IAM → Users → Your User → Security credentials)
+
+### Credentials Work with aws configure but not .env
+
+**Solution**: Add `export` to all variables in `.aws.env`:
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=...
+```
+
+## Deployment Issues
+
+### Can't Connect to Dashboard
+
+**Check**:
+1. Your IP address:
+```bash
+curl -4 ifconfig.me
+```
+
+2. If IP changed, update terraform.tfvars and reapply:
+```bash
+nano terraform.tfvars  # Update my_ip_cidrs
+terraform apply
+```
+
+### OpenClaw Not Starting on EC2
+
+**Debug**:
+```bash
+# SSH to server
+$(terraform output -raw ssh_command)
+
+# Check service
+oc status
+sudo systemctl status openclaw
+
+# View bootstrap log
+sudo cat /var/log/openclaw-bootstrap.log
+
+# View OpenClaw logs
+oc logs
+```
+
+### SSH Connection Refused
+
+**Wait**: Bootstrap takes 5-8 minutes. Check progress:
+```bash
+# From your local machine
+aws ec2 describe-instances --instance-ids $(terraform output -json | jq -r ".instance_id.value") --query "Reservations[0].Instances[0].State.Name"
+```
+
+## Common Questions
+
+### How do I update my IP address?
+
+```bash
+curl -4 ifconfig.me  # Get new IP
+nano terraform.tfvars  # Update my_ip_cidrs
+terraform apply  # Apply instantly, no restart needed
+```
+
+### How do I view OpenClaw logs remotely?
+
+```bash
+$(terraform output -raw ssh_command)
+oc logs
+```
+
+### How do I backup manually?
+
+```bash
+$(terraform output -raw ssh_command)
+oc backup
+```
+
+### Where are my backups stored?
+
+```bash
+aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
+```
+
+---
+
+
