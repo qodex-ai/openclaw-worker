@@ -214,7 +214,7 @@ User=ubuntu
 Environment=HOME=/home/ubuntu
 EnvironmentFile=/home/ubuntu/.env
 WorkingDirectory=/home/ubuntu
-ExecStart=/usr/bin/openclaw up --token \${OPENCLAW_GATEWAY_TOKEN}
+ExecStart=/usr/bin/openclaw up --token $${OPENCLAW_GATEWAY_TOKEN}
 ExecStop=/usr/bin/pkill -f openclaw
 Restart=on-failure
 RestartSec=10
