@@ -1,9 +1,9 @@
 # 🦞 OpenClaw on AWS — Complete Setup Guide
 
-> **Time**: ~45 minutes  
-> **Cost**: ~$33/month (t3.medium)  
-> **Channel**: Slack  
-> **Install**: npm package (cleaner than git clone)
+> **Time**: ~45 minutes
+> **Cost**: ~$33/month (t3.medium)
+> **Channel**: Slack
+> **Install**: OpenClaw via npm (Docker installed for internal use only)
 
 ---
 
@@ -28,9 +28,22 @@
 
 ## 📋 What You Need
 
-- ✅ Slack Bot Token (`xoxb-...`)
-- ✅ Slack App Token (`xapp-...`)  
-- ✅ Anthropic API key (`sk-ant-...`)
+Before starting, gather these:
+
+- ✅ **AWS Account** (will create in Part 1 if needed)
+- ✅ **Slack Bot Token** (`xoxb-...`)
+- ✅ **Slack App Token** (`xapp-...`)
+- ✅ **Anthropic API Key** (`sk-ant-...`)
+
+## 🔐 Security Note
+
+This guide uses a `.env` file approach for AWS credentials instead of `aws configure`. Benefits:
+
+- ✅ Credentials stored locally in project directory
+- ✅ Easy to switch between different AWS accounts
+- ✅ Git-ignored by default (won't accidentally commit)
+- ✅ Works seamlessly with Terraform
+- ✅ No global configuration changes
 
 ---
 
@@ -159,23 +172,51 @@ terraform --version  # ✓
 
 ---
 
-# PART 5: Configure AWS CLI
+# PART 5: Configure AWS Credentials
+
+Instead of saving credentials with `aws configure`, we'll use a `.env` file for better security and portability.
+
+## Step 5.1: Create AWS Credentials File
 
 ```bash
-aws configure
+cd ~/openclaw-infra
+cat > .aws.env << 'EOF'
+# AWS Credentials for Terraform
+# Keep this file secure and never commit to git!
+
+AWS_ACCESS_KEY_ID=AKIA________________
+AWS_SECRET_ACCESS_KEY=________________________________________
+AWS_DEFAULT_REGION=us-east-1
+EOF
 ```
 
-Enter:
-```
-AWS Access Key ID:     AKIA________________
-AWS Secret Access Key: ________________________________________
-Default region name:   us-east-1
-Default output format: json
+**Replace the placeholder values** with your actual access key and secret key from Step 3.3.
+
+## Step 5.2: Secure the File
+
+```bash
+chmod 600 .aws.env
 ```
 
-Verify:
+## Step 5.3: Load Credentials
+
+```bash
+source .aws.env
+```
+
+## Step 5.4: Verify
+
 ```bash
 aws sts get-caller-identity
+```
+
+You should see your account ID and user ARN.
+
+**Note**: You'll need to run `source .aws.env` each time you open a new terminal. Alternatively, add this to your shell profile:
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc (optional)
+echo "source ~/openclaw-infra/.aws.env" >> ~/.bashrc  # or ~/.zshrc for macOS
 ```
 
 ---
@@ -192,26 +233,26 @@ curl ifconfig.me
 
 # PART 7: Create Terraform Files
 
-## Step 7.1: Create Directory
+## Step 7.1: Clone the Repository
 
 ```bash
-mkdir -p ~/openclaw-infra
-cd ~/openclaw-infra
+git clone https://github.com/qodex-ai/openclaw-worker.git
+cd openclaw-worker
 ```
 
-## Step 7.2: Download & Extract Files
-
-Extract the `openclaw-terraform.zip` to `~/openclaw-infra/`
-
-You should have:
+You should now have:
 ```
-~/openclaw-infra/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── user_data.sh
-├── terraform.tfvars.example
-└── .gitignore
+openclaw-worker/
+├── main.tf                    # AWS infrastructure
+├── variables.tf               # Input variables
+├── outputs.tf                 # Output values
+├── user_data.sh              # EC2 bootstrap script
+├── terraform.tfvars.example  # Configuration template
+├── .gitignore                # Git ignore rules
+├── .github/                  # CI/CD workflows
+├── LICENSE                   # MIT License
+├── README.md                 # Quick reference
+└── SETUP_GUIDE.md           # This file
 ```
 
 ## Step 7.3: Create Your Config
@@ -244,7 +285,17 @@ Save: `Ctrl+X`, `Y`, `Enter`
 
 # PART 8: Deploy!
 
-## Step 8.1: Initialize
+**Important**: Make sure your AWS credentials are loaded:
+
+```bash
+# Load AWS credentials (if not already done)
+source .aws.env
+
+# Verify credentials are loaded
+aws sts get-caller-identity
+```
+
+## Step 8.1: Initialize Terraform
 
 ```bash
 terraform init
@@ -283,12 +334,12 @@ terraform output
 
 # PART 9: Wait for Setup (~5-8 minutes)
 
-The server is now:
-1. Installing Node.js 22
-2. Installing Docker
-3. Installing OpenClaw via npm
-4. Configuring Slack
-5. Starting the gateway
+The server is now bootstrapping automatically:
+1. Installing Node.js 22 (required for OpenClaw)
+2. Installing Docker (used internally by OpenClaw)
+3. Installing OpenClaw via `npm install -g openclaw`
+4. Configuring Slack integration
+5. Starting OpenClaw as a systemd service
 
 ## Monitor Progress
 
@@ -356,27 +407,39 @@ Open in browser → You should see OpenClaw UI!
 ## From Your Computer
 
 ```bash
+# Navigate to project directory
+cd ~/openclaw-worker
+
+# Load AWS credentials
+source .aws.env
+
 # SSH to server
-cd ~/openclaw-infra
 $(terraform output -raw ssh_command)
 
-# Get dashboard URL
+# Get dashboard URL (in a new terminal)
+cd ~/openclaw-worker
+source .aws.env
 terraform output -raw dashboard_url_with_token
 ```
 
 ## If Your IP Changes
 
 ```bash
-# Edit config with new IP
-nano ~/openclaw-infra/terraform.tfvars
+cd ~/openclaw-worker
+source .aws.env
 
-# Apply changes (instant)
+# Edit config with new IP
+nano terraform.tfvars
+
+# Apply changes (instant, no restart needed)
 terraform apply
 ```
 
 ## View S3 Backups
 
 ```bash
+cd ~/openclaw-worker
+source .aws.env
 aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
 ```
 
@@ -385,45 +448,81 @@ aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
 # PART 12: Cleanup (If Needed)
 
 ```bash
-cd ~/openclaw-infra
+cd ~/openclaw-worker
+source .aws.env
 
-# Download backups first
+# Download backups first (optional but recommended)
 aws s3 sync s3://$(terraform output -raw s3_bucket) ./my-backups/
 
-# Destroy everything
+# Destroy all AWS resources
 terraform destroy
-# Type 'yes'
+# Type 'yes' when prompted
+
+# Optionally remove local files
+cd ~
+rm -rf openclaw-worker
 ```
+
+**Note**: This will delete the EC2 instance, S3 bucket (and all backups), and all related AWS resources. Make sure to download any data you need first!
 
 ---
 
 # ✅ Done!
 
-## What You Have
+## What You Have Now
 
 | Component | Details |
 |-----------|---------|
-| EC2 | t3.medium (4GB RAM) |
-| Install | npm package (easy updates) |
-| Channel | Slack connected |
-| Security | Your IP only |
-| Backups | Daily to S3 |
-| Cost | ~$33/month |
+| **EC2 Instance** | t3.medium (4GB RAM, Ubuntu 24.04) |
+| **Installation** | OpenClaw via npm (Docker for internal use) |
+| **Channel** | Slack fully integrated |
+| **Security** | IP-restricted, encrypted backups |
+| **Backups** | Daily automated backups to S3 |
+| **Cost** | ~$33/month (AWS) |
 
-## Key URLs & Commands
+## Essential Commands
+
+**On your local machine:**
 
 ```bash
-# Dashboard
+# Always load credentials first
+cd ~/openclaw-worker
+source .aws.env
+
+# Get dashboard URL
 terraform output -raw dashboard_url_with_token
 
-# SSH
+# SSH to server
 $(terraform output -raw ssh_command)
 
-# On server
-oc status    # Check status
-oc logs      # View logs
-oc backup    # Backup now
-oc update    # Update OpenClaw
+# View backups
+aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
+```
+
+**On the EC2 server (via SSH):**
+
+```bash
+oc status    # Check if OpenClaw is running
+oc logs      # View live logs
+oc restart   # Restart OpenClaw service
+oc backup    # Create manual backup to S3
+oc update    # Update OpenClaw to latest version
+oc url       # Show dashboard URL with token
+```
+
+## Quick Reference Card
+
+Save this for future use:
+
+```bash
+# Local machine workflow
+cd ~/openclaw-worker
+source .aws.env
+terraform output -raw dashboard_url_with_token  # Get URL
+$(terraform output -raw ssh_command)            # SSH in
+
+# Server management commands
+oc status | logs | restart | backup | update | url
 ```
 
 ---

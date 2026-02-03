@@ -19,9 +19,14 @@ terraform.rc
 *.pub
 openclaw-key*
 
-# Environment
+# Environment & Credentials
 .env
-.env.local
+.env.*
+.aws.env
+aws.env
+# Allow example files
+!.aws.env.example
+!.env.example
 
 # IDE
 .idea/
