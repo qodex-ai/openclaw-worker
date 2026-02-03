@@ -11,8 +11,6 @@ GATEWAY_TOKEN="${gateway_token}"
 S3_BUCKET="${s3_bucket}"
 AWS_REGION="${aws_region}"
 ANTHROPIC_API_KEY="${anthropic_api_key}"
-SLACK_BOT_TOKEN="${slack_bot_token}"
-SLACK_APP_TOKEN="${slack_app_token}"
 
 CONFIG_DIR="/home/ubuntu/.openclaw"
 export HOME="/home/ubuntu"
@@ -82,10 +80,6 @@ AWS_REGION=$AWS_REGION
 
 # Anthropic
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
-
-# Slack
-SLACK_BOT_TOKEN=$SLACK_BOT_TOKEN
-SLACK_APP_TOKEN=$SLACK_APP_TOKEN
 EOF
 
 chown ubuntu:ubuntu /home/ubuntu/.env
@@ -101,13 +95,6 @@ sudo -u ubuntu cat > $CONFIG_DIR/config.json << EOF
   },
   "anthropic": {
     "apiKey": "$ANTHROPIC_API_KEY"
-  },
-  "channels": {
-    "slack": {
-      "enabled": true,
-      "botToken": "$SLACK_BOT_TOKEN",
-      "appToken": "$SLACK_APP_TOKEN"
-    }
   }
 }
 EOF

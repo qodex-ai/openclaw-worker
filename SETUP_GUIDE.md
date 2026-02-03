@@ -18,7 +18,6 @@
 │   (SSH + Dashboard)      ├── Node.js 22 + npm                   │
 │                          ├── OpenClaw (via npm)                  │
 │                          ├── Docker (for openclaw internals)     │
-│                          ├── Slack Integration ◄──── Slack API   │
 │                          └── Manual backups ─────► S3 Bucket    │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -31,9 +30,9 @@
 Before starting, gather these:
 
 - ✅ **AWS Account** (will create in Part 1 if needed)
-- ✅ **Slack Bot Token** (`xoxb-...`)
-- ✅ **Slack App Token** (`xapp-...`)
 - ✅ **Anthropic API Key** (`sk-ant-...`)
+
+**Note**: Slack integration is configured through OpenClaw's interface after deployment.
 
 ## 🔐 Security Note
 
@@ -273,10 +272,6 @@ my_ip_cidrs = ["203.0.113.50/32"]
 
 # Your Anthropic API key
 anthropic_api_key = "sk-ant-api03-xxxxxxxxxxxxx"
-
-# Your Slack tokens (you already have these)
-slack_bot_token = "xoxb-1234567890-xxxxxxxxxxxxx"
-slack_app_token = "xapp-1-A0123456789-xxxxxxxxxxxxx"
 ```
 
 Save: `Ctrl+X`, `Y`, `Enter`
@@ -338,8 +333,9 @@ The server is now bootstrapping automatically:
 1. Installing Node.js 22 (required for OpenClaw)
 2. Installing Docker (used internally by OpenClaw)
 3. Installing OpenClaw via `npm install -g openclaw`
-4. Configuring Slack integration
-5. Starting OpenClaw as a systemd service
+4. Starting OpenClaw as a systemd service
+
+**Note**: Configure Slack integration through OpenClaw's dashboard after setup completes.
 
 ## Monitor Progress
 
@@ -381,11 +377,12 @@ terraform output -raw dashboard_url_with_token
 
 Open in browser → You should see OpenClaw UI!
 
-## Step 10.3: Test Slack
+## Step 10.3: Configure Integrations
 
-1. Open Slack
-2. DM your bot or @mention in a channel
-3. Should get a response!
+1. Open the OpenClaw dashboard
+2. Configure Slack integration (if needed) through the UI
+3. Add your AWS credentials for S3 backups (if needed)
+4. Set up any other integrations you need
 
 ---
 
@@ -477,7 +474,7 @@ rm -rf openclaw-worker
 |-----------|---------|
 | **EC2 Instance** | t3.medium (4GB RAM, Ubuntu 24.04) |
 | **Installation** | OpenClaw via npm (Docker for internal use) |
-| **Channel** | Slack fully integrated |
+| **Dashboard** | Web UI accessible via gateway token |
 | **Security** | IP-restricted, encrypted S3 storage |
 | **Backups** | Manual backup commands + S3 bucket available |
 | **Cost** | ~$33/month (AWS) |

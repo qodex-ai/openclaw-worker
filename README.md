@@ -22,7 +22,7 @@ source .aws.env
 
 # Configure Terraform
 cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars  # Add your IP, Anthropic API key, and Slack tokens
+nano terraform.tfvars  # Add your IP and Anthropic API key
 
 # Deploy
 terraform init
@@ -55,7 +55,6 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 - **Node.js 22** — Latest LTS version
 - **OpenClaw** — Installed via npm for easy updates
 - **Docker** — Required for OpenClaw's container management
-- **Slack Integration** — Pre-configured bot and app tokens
 - **Systemd Service** — Auto-start on boot with automatic restarts
 - **Management CLI** — Custom `oc` command for operations
 
@@ -104,10 +103,9 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 - **AWS Account** with IAM user access keys
 - **[Terraform](https://developer.hashicorp.com/terraform/downloads)** (v1.0+)
 - **[AWS CLI](https://aws.amazon.com/cli/)** installed
-- **Slack Bot Token** (`xoxb-...`) and **App Token** (`xapp-...`)
 - **Anthropic API Key** (`sk-ant-...`)
 
-**Note**: This setup uses environment variables (`.aws.env` file) for AWS credentials instead of `aws configure`. This keeps credentials project-local and git-ignored.
+**Note**: This setup uses environment variables (`.aws.env` file) for AWS credentials instead of `aws configure`. This keeps credentials project-local and git-ignored. Slack integration is configured through OpenClaw's interface after deployment.
 
 ---
 
@@ -141,10 +139,8 @@ instance_type = "t3.medium"
 # Your IP address (REQUIRED) - add /32 at the end
 my_ip_cidrs = ["203.0.113.50/32"]
 
-# Your API keys (REQUIRED)
+# Your Anthropic API key (REQUIRED)
 anthropic_api_key = "sk-ant-api03-xxxxx"
-slack_bot_token   = "xoxb-xxxxx"
-slack_app_token   = "xapp-xxxxx"
 ```
 
 ### 4. Deploy
