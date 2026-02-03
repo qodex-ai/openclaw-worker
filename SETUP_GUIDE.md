@@ -19,7 +19,7 @@
 │                          ├── OpenClaw (via npm)                  │
 │                          ├── Docker (for openclaw internals)     │
 │                          ├── Slack Integration ◄──── Slack API   │
-│                          └── Daily backups ──────► S3 Bucket    │
+│                          └── Manual backups ─────► S3 Bucket    │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -398,11 +398,13 @@ Open in browser → You should see OpenClaw UI!
 | `oc status` | Check if running |
 | `oc logs` | View logs |
 | `oc restart` | Restart OpenClaw |
-| `oc backup` | Manual backup to S3 |
+| `oc backup` | Manual backup to S3 (on-demand only) |
 | `oc restore` | Restore from S3 |
 | `oc update` | Update to latest version |
 | `oc url` | Show dashboard URL |
 | `oc token` | Show gateway token |
+
+**Note**: Automated daily backups are disabled. Configure scheduled backups through OpenClaw's interface.
 
 ## From Your Computer
 
@@ -476,8 +478,8 @@ rm -rf openclaw-worker
 | **EC2 Instance** | t3.medium (4GB RAM, Ubuntu 24.04) |
 | **Installation** | OpenClaw via npm (Docker for internal use) |
 | **Channel** | Slack fully integrated |
-| **Security** | IP-restricted, encrypted backups |
-| **Backups** | Daily automated backups to S3 |
+| **Security** | IP-restricted, encrypted S3 storage |
+| **Backups** | Manual backup commands + S3 bucket available |
 | **Cost** | ~$33/month (AWS) |
 
 ## Essential Commands
@@ -505,10 +507,12 @@ aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
 oc status    # Check if OpenClaw is running
 oc logs      # View live logs
 oc restart   # Restart OpenClaw service
-oc backup    # Create manual backup to S3
+oc backup    # Create manual backup to S3 (no automated backups)
 oc update    # Update OpenClaw to latest version
 oc url       # Show dashboard URL with token
 ```
+
+**Note**: Configure automated backups within OpenClaw using your AWS credentials.
 
 ## Quick Reference Card
 
