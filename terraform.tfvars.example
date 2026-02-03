@@ -1,0 +1,24 @@
+#===============================================================================
+# OpenClaw Configuration
+# 
+# 1. Copy this file:    cp terraform.tfvars.example terraform.tfvars
+# 2. Edit the values:   nano terraform.tfvars
+# 3. Get your IP:       curl ifconfig.me
+#===============================================================================
+
+aws_region    = "us-east-1"
+instance_type = "t3.medium"   # ~$30/month (4GB RAM)
+
+# YOUR IP ADDRESS - REQUIRED
+# Get it by running: curl ifconfig.me
+# Format must include /32 at the end
+my_ip_cidrs = ["YOUR_IP_HERE/32"]
+
+# ANTHROPIC API KEY - REQUIRED
+# Get from: https://console.anthropic.com/
+anthropic_api_key = "sk-ant-YOUR-KEY-HERE"
+
+# SLACK TOKENS - REQUIRED
+# You already have these from your local OpenClaw setup
+slack_bot_token = "xoxb-YOUR-BOT-TOKEN"
+slack_app_token = "xapp-YOUR-APP-TOKEN"
