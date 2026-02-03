@@ -62,9 +62,11 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 ### Automation
 
 - **User Data Script** — Automated installation and configuration
-- **Daily Backups** — Cron job uploads to S3 every night
-- **Lifecycle Policies** — Automatic cost optimization
+- **Manual Backups** — On-demand backup to S3 via `oc backup` command
+- **Lifecycle Policies** — Automatic cost optimization for S3 storage
 - **GitHub Actions** — CI/CD with Terraform validation and security scanning
+
+**Note**: Configure automated backups through OpenClaw's interface using your AWS credentials.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -210,11 +212,13 @@ Then use the `oc` command:
 | `oc restart` | Restart OpenClaw |
 | `oc stop` | Stop OpenClaw |
 | `oc start` | Start OpenClaw |
-| `oc backup` | Manual backup to S3 |
+| `oc backup` | Manual backup to S3 (on-demand only) |
 | `oc restore <file>` | Restore from S3 backup |
 | `oc update` | Update OpenClaw to latest |
 | `oc url` | Show dashboard URL with token |
 | `oc token` | Show gateway token |
+
+**Note**: Automated daily backups are disabled. Configure backups within OpenClaw using your AWS credentials.
 
 ---
 

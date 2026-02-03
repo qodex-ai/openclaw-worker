@@ -199,7 +199,7 @@ case "$1" in
         echo "  status   - Check if running"
         echo "  logs     - View logs"
         echo "  update   - Update to latest version"
-        echo "  backup   - Backup to S3"
+        echo "  backup   - Manual backup to S3"
         echo "  restore  - Restore from S3"
         echo "  token    - Show gateway token"
         echo "  url      - Show dashboard URL with token"
@@ -246,19 +246,6 @@ systemctl start openclaw.service
 # Wait for startup
 sleep 10
 
-# Setup daily backup cron
-echo ">>> Setting up daily backups..."
-cat > /etc/cron.daily/openclaw-backup << 'CRON'
-#!/bin/bash
-source /home/ubuntu/.env
-FILE="openclaw-backup-$(date +%Y%m%d).tar.gz"
-tar -czvf "/tmp/$FILE" /home/ubuntu/.openclaw /home/ubuntu/.env 2>/dev/null
-aws s3 cp "/tmp/$FILE" "s3://$OPENCLAW_S3_BUCKET/backups/$FILE" --storage-class STANDARD_IA
-rm "/tmp/$FILE"
-# Keep only last 7 daily backups locally referenced
-CRON
-chmod +x /etc/cron.daily/openclaw-backup
-
 # Save credentials file
 PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 cat > /home/ubuntu/CREDENTIALS.txt << EOF
@@ -277,13 +264,15 @@ S3 Backup Bucket:
 
 Quick Commands:
   oc start    - Start OpenClaw
-  oc stop     - Stop OpenClaw  
+  oc stop     - Stop OpenClaw
   oc restart  - Restart OpenClaw
   oc status   - Check status
   oc logs     - View logs
   oc backup   - Manual backup to S3
   oc url      - Show dashboard URL
   oc update   - Update OpenClaw
+
+Note: Automated daily backups are disabled. Configure backups through OpenClaw.
 
 ═══════════════════════════════════════════════════════════════
 EOF
