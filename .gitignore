@@ -1,63 +1,27 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
 
-# C extensions
-*.so
+# SSH Keys
+*.pem
+*.pub
+openclaw-key*
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# PyInstaller
-*.manifest
-*.spec
-
-# pip
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Environments
+# Environment
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+.env.local
 
 # IDE
 .idea/
@@ -66,16 +30,14 @@ venv.bak/
 *.swo
 *~
 
-# CDK
-cdk.out/
-cdk.context.json
-
-# Local state
-.clawd/
-
 # OS
 .DS_Store
 Thumbs.db
+*.log
 
-# Test outputs
-test-outputs/
+# Backups
+*.backup
+*.bak
+
+# Credentials
+CREDENTIALS.txt

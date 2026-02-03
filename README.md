@@ -1,24 +1,61 @@
-# 🦞 OpenClaw AWS Terraform
+# 🦞 OpenClaw Worker - AWS Terraform
 
-> One-command deployment of [OpenClaw](https://www.npmjs.com/package/openclaw) on AWS EC2 with Slack integration, S3 backups, and security hardening.
+> Production-ready Terraform configuration for deploying [OpenClaw](https://www.npmjs.com/package/openclaw) on AWS EC2 with Slack integration, automated backups, and enterprise security.
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.0+-purple.svg)](https://www.terraform.io/)
 [![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20S3%20%7C%20IAM-orange.svg)](https://aws.amazon.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/qodex-ai/openclaw-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/qodex-ai/openclaw-worker/actions)
+
+---
+
+## ⚡ TL;DR
+
+```bash
+git clone https://github.com/qodex-ai/openclaw-worker.git
+cd openclaw-worker
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your IP and API keys
+terraform init
+terraform apply  # Type 'yes'
+terraform output -raw dashboard_url_with_token  # Copy this URL
+```
+
+Wait 5 minutes for setup, then open the URL. Done! ✅
+
+For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
 ---
 
 ## 🎯 What This Does
 
-Deploys a production-ready OpenClaw instance on AWS with:
+This Terraform configuration automatically deploys a production-ready OpenClaw instance on AWS with enterprise-grade security and automation:
 
-- **EC2** (t3.medium) — 4GB RAM, Ubuntu 24.04
-- **Security Group** — Restricted to your IP only
-- **S3 Bucket** — Encrypted daily backups with lifecycle policies
-- **IAM Role** — Secure EC2-to-S3 access (no hardcoded keys)
-- **Elastic IP** — Static public IP
-- **Slack Integration** — Pre-configured and ready to use
-- **Systemd Service** — Auto-start on reboot
+### Infrastructure Components
+
+- **EC2 Instance** (t3.medium) — 4GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
+- **Security Group** — Locked down to your IP only (SSH + Dashboard)
+- **S3 Bucket** — Encrypted backups with intelligent tiering (30d→IA, 90d→Glacier, 365d→Delete)
+- **IAM Role & Instance Profile** — Secure EC2-to-S3 access without hardcoded credentials
+- **Elastic IP** — Static public IP that persists across restarts
+- **SSH Key Pair** — Auto-generated 4096-bit RSA key
+- **SSM Integration** — AWS Systems Manager for secure access
+
+### Software Stack
+
+- **Node.js 22** — Latest LTS version
+- **OpenClaw** — Installed via npm for easy updates
+- **Docker** — Required for OpenClaw's container management
+- **Slack Integration** — Pre-configured bot and app tokens
+- **Systemd Service** — Auto-start on boot with automatic restarts
+- **Management CLI** — Custom `oc` command for operations
+
+### Automation
+
+- **User Data Script** — Automated installation and configuration
+- **Daily Backups** — Cron job uploads to S3 every night
+- **Lifecycle Policies** — Automatic cost optimization
+- **GitHub Actions** — CI/CD with Terraform validation and security scanning
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -66,8 +103,8 @@ Deploys a production-ready OpenClaw instance on AWS with:
 ### 1. Clone this repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/openclaw-aws-terraform.git
-cd openclaw-aws-terraform
+git clone https://github.com/qodex-ai/openclaw-worker.git
+cd openclaw-worker
 ```
 
 ### 2. Get your public IP
@@ -116,16 +153,19 @@ Open in browser — done! 🎉
 
 ---
 
-## 📁 Files
+## 📁 Repository Contents
 
-| File | Description |
-|------|-------------|
-| `main.tf` | AWS infrastructure (EC2, S3, IAM, Security Groups) |
-| `variables.tf` | Input variable definitions |
-| `outputs.tf` | Output values (IPs, URLs, commands) |
-| `user_data.sh` | EC2 bootstrap script (installs OpenClaw via npm) |
-| `terraform.tfvars.example` | Example configuration template |
-| `SETUP_GUIDE.md` | Detailed step-by-step guide |
+| File/Directory | Description |
+|----------------|-------------|
+| `main.tf` | Core AWS infrastructure (EC2, S3, IAM, Security Groups, Elastic IP) |
+| `variables.tf` | Input variable definitions and validation |
+| `outputs.tf` | Output values (IPs, URLs, SSH commands, tokens) |
+| `user_data.sh` | EC2 bootstrap script - installs Node.js, Docker, and OpenClaw |
+| `terraform.tfvars.example` | Template configuration file (copy to `terraform.tfvars`) |
+| `SETUP_GUIDE.md` | Complete step-by-step deployment guide (45 minutes) |
+| `.github/workflows/ci.yml` | Automated Terraform validation and security scanning |
+| `.gitignore` | Git ignore rules for Terraform and sensitive files |
+| `LICENSE` | MIT License |
 
 ---
 
@@ -315,10 +355,12 @@ oc logs | grep -i slack
 
 ## 📚 Resources
 
+- **This Repository**: [qodex-ai/openclaw-worker](https://github.com/qodex-ai/openclaw-worker)
 - [OpenClaw npm package](https://www.npmjs.com/package/openclaw)
 - [OpenClaw GitHub](https://github.com/openclaw/openclaw)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
 - [AWS EC2 Pricing](https://aws.amazon.com/ec2/pricing/)
+- [Complete Setup Guide](SETUP_GUIDE.md) - Step-by-step instructions
 
 ---
 
