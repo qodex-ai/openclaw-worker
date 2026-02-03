@@ -44,7 +44,7 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 - **EC2 Instance** (t3.medium) — 4GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
 - **Security Group** — Locked down to your IP only (SSH + Dashboard)
-- **S3 Bucket** — Encrypted backups with intelligent tiering (30d→IA, 90d→Glacier, 365d→Delete)
+- **S3 Bucket** — Encrypted backups with automatic cleanup (180 days retention)
 - **IAM Role & Instance Profile** — Secure EC2-to-S3 access without hardcoded credentials
 - **Elastic IP** — Static public IP that persists across restarts
 - **SSH Key Pair** — Auto-generated 4096-bit RSA key
@@ -63,7 +63,7 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 - **User Data Script** — Automated installation and configuration
 - **Manual Backups** — On-demand backup to S3 via `oc backup` command
-- **Lifecycle Policies** — Automatic cost optimization for S3 storage
+- **S3 Lifecycle Policy** — Automatic deletion after 180 days
 - **GitHub Actions** — CI/CD with Terraform validation and security scanning
 
 **Note**: Configure automated backups through OpenClaw's interface using your AWS credentials.
