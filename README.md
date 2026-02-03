@@ -14,8 +14,17 @@
 ```bash
 git clone https://github.com/qodex-ai/openclaw-worker.git
 cd openclaw-worker
+
+# Setup AWS credentials
+cp .aws.env.example .aws.env
+nano .aws.env  # Add your AWS access key and secret key
+source .aws.env
+
+# Configure Terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your IP and API keys
+nano terraform.tfvars  # Add your IP, Anthropic API key, and Slack tokens
+
+# Deploy
 terraform init
 terraform apply  # Type 'yes'
 terraform output -raw dashboard_url_with_token  # Copy this URL
@@ -90,11 +99,13 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 ## 📋 Prerequisites
 
-- AWS Account
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) (v1.0+)
-- [AWS CLI](https://aws.amazon.com/cli/) (configured)
-- Slack Bot Token (`xoxb-...`) and App Token (`xapp-...`)
-- Anthropic API Key (`sk-ant-...`)
+- **AWS Account** with IAM user access keys
+- **[Terraform](https://developer.hashicorp.com/terraform/downloads)** (v1.0+)
+- **[AWS CLI](https://aws.amazon.com/cli/)** installed
+- **Slack Bot Token** (`xoxb-...`) and **App Token** (`xapp-...`)
+- **Anthropic API Key** (`sk-ant-...`)
+
+**Note**: This setup uses environment variables (`.aws.env` file) for AWS credentials instead of `aws configure`. This keeps credentials project-local and git-ignored.
 
 ---
 
@@ -160,12 +171,13 @@ Open in browser — done! 🎉
 | `main.tf` | Core AWS infrastructure (EC2, S3, IAM, Security Groups, Elastic IP) |
 | `variables.tf` | Input variable definitions and validation |
 | `outputs.tf` | Output values (IPs, URLs, SSH commands, tokens) |
-| `user_data.sh` | EC2 bootstrap script - installs Node.js, Docker, and OpenClaw |
-| `terraform.tfvars.example` | Template configuration file (copy to `terraform.tfvars`) |
-| `SETUP_GUIDE.md` | Complete step-by-step deployment guide (45 minutes) |
+| `user_data.sh` | EC2 bootstrap script - installs Node.js, Docker, and OpenClaw via npm |
+| `terraform.tfvars.example` | Template for Terraform variables (copy to `terraform.tfvars`) |
+| `.aws.env.example` | Template for AWS credentials (copy to `.aws.env`) |
+| `SETUP_GUIDE.md` | Complete step-by-step deployment guide (~45 minutes) |
 | `.github/workflows/ci.yml` | Automated Terraform validation and security scanning |
 | `.gitignore` | Git ignore rules for Terraform and sensitive files |
-| `LICENSE` | MIT License |
+| `LICENSE` | MIT License (2025 Qodex AI) |
 
 ---
 
