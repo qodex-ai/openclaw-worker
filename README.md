@@ -1,6 +1,6 @@
 # 🦞 OpenClaw Worker - AWS Terraform
 
-> Production-ready Terraform configuration for deploying [OpenClaw](https://www.npmjs.com/package/openclaw) on AWS EC2 with Slack integration, automated backups, and enterprise security.
+> Production-ready Terraform configuration for deploying [OpenClaw](https://www.npmjs.com/package/openclaw) on AWS EC2 with **HTTPS/SSL**, automated backups, and enterprise security. One-command deployment with automatic Let's Encrypt SSL certificates.
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.0+-purple.svg)](https://www.terraform.io/)
 [![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20S3%20%7C%20IAM-orange.svg)](https://aws.amazon.com/)
@@ -23,17 +23,22 @@ source .aws.env
 
 # Configure Terraform
 cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars  # Add your IP and Anthropic API key
+nano terraform.tfvars  # Add your IP, domain, email, and Anthropic API key
 
 # Deploy
 terraform init
 terraform apply  # Type 'yes' when prompted
 
-# Wait 5-8 minutes for bootstrap, then get dashboard URL
+# Wait 8-10 minutes for bootstrap + SSL certificate, then get HTTPS dashboard URL
 terraform output -raw dashboard_url_with_token
+
+# Pair your browser (first-time only)
+$(terraform output -raw ssh_command)
+openclaw devices list      # See pending pairing request
+openclaw devices approve <request-id>
 ```
 
-Open the URL in your browser. Done! ✅
+Open the HTTPS URL in your browser. Done! ✅
 
 For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
@@ -56,10 +61,11 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 ### Infrastructure Components
 
 - **EC2 Instance** (t3.medium) — 4GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
-- **Security Group** — Locked down to your IP only (SSH + Dashboard)
+- **Security Group** — Locked down to your IP (SSH), HTTPS/HTTP open for SSL validation
 - **S3 Bucket** — Encrypted backups with automatic cleanup (180 days retention)
 - **IAM Role & Instance Profile** — Secure EC2-to-S3 access without hardcoded credentials
 - **Elastic IP** — Static public IP that persists across restarts
+- **Route53 DNS** — A record pointing your domain to the Elastic IP
 - **SSH Key Pair** — Auto-generated 4096-bit RSA key
 - **SSM Integration** — AWS Systems Manager for secure access
 
@@ -68,12 +74,16 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 - **Node.js 22** — Latest LTS version
 - **OpenClaw** — Installed via npm for easy updates
 - **Docker** — Required for OpenClaw's container management
+- **Nginx** — HTTPS reverse proxy with SSL termination
+- **Let's Encrypt SSL** — Free, auto-renewing SSL certificates via Certbot
 - **Systemd Service** — Auto-start on boot with automatic restarts
 - **Management CLI** — Custom `oc` command for operations
 
 ### Automation
 
 - **User Data Script** — Automated installation and configuration
+- **SSL Certificate** — Automatic acquisition and renewal via Let's Encrypt
+- **DNS Management** — Route53 A record automatically created
 - **Manual Backups** — On-demand backup to S3 via `oc backup` command
 - **S3 Lifecycle Policy** — Automatic deletion after 180 days
 - **GitHub Actions** — CI/CD with Terraform validation and security scanning
@@ -85,15 +95,20 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 │                      ARCHITECTURE                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│   YOUR IP ─────────►  EC2 (t3.medium)                           │
-│   (SSH + Dashboard)    ├── Node.js 22                           │
-│                        ├── OpenClaw (npm)                        │
-│                        ├── Docker                                │
-│                        └── Slack ◄──────► Slack API             │
-│                              │                                   │
-│                              ▼                                   │
-│                         S3 Bucket                                │
-│                    (encrypted backups)                           │
+│   YOUR DOMAIN ──────►  Route53 DNS                              │
+│   (HTTPS/SSL)              │                                    │
+│                            ▼                                    │
+│                       EC2 (t3.medium)                            │
+│                            │                                    │
+│   Let's Encrypt ────► Nginx (HTTPS) ──► OpenClaw (:18789)      │
+│   (SSL Cert)               │                 │                  │
+│                            │                 ├── Node.js 22     │
+│   YOUR IP ─────────► SSH (Port 22)          ├── Docker         │
+│                                              └── Slack API      │
+│                                                   │             │
+│                                                   ▼             │
+│                                              S3 Bucket          │
+│                                         (encrypted backups)     │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -114,11 +129,13 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 ## 📋 Prerequisites
 
 - **AWS Account** with IAM user access keys
+- **Domain Name** with Route53 hosting (e.g., `openclaw.yourdomain.com`)
+- **Email Address** for SSL certificate notifications
 - **[Terraform](https://developer.hashicorp.com/terraform/downloads)** (v1.0+)
 - **[AWS CLI](https://aws.amazon.com/cli/)** installed
 - **Anthropic API Key** (`sk-ant-...`)
 
-**Note**: This setup uses environment variables (`.aws.env` file) for AWS credentials instead of `aws configure`. This keeps credentials project-local and git-ignored. Slack integration is configured through OpenClaw's interface after deployment.
+**Note**: This setup uses environment variables (`.aws.env` file) for AWS credentials instead of `aws configure`. This keeps credentials project-local and git-ignored. HTTPS with valid SSL certificate is required for browser security. Slack integration is configured through OpenClaw's interface after deployment.
 
 ---
 
@@ -172,8 +189,17 @@ instance_type = "t3.medium"
 # Your IP (add /32 at the end)
 my_ip_cidrs = ["49.47.128.13/32"]
 
+# Your domain name (must be in Route53)
+domain_name = "openclaw.yourdomain.com"
+
+# Your email for SSL certificate notifications
+email = "you@example.com"
+
 # Your Anthropic API key
 anthropic_api_key = "sk-ant-api03-xxxxx"
+
+# Optional: Route53 hosted zone ID (auto-detected if not provided)
+route53_zone_id = "Z1234567890ABC"
 ```
 
 ### 5. Deploy Infrastructure
@@ -187,15 +213,15 @@ Type `yes` when prompted. Wait ~3 minutes for AWS resources.
 
 ### 6. Wait for Bootstrap & Get Dashboard URL
 
-The EC2 instance will auto-install OpenClaw (5-8 minutes). Then:
+The EC2 instance will auto-install OpenClaw, nginx, and obtain SSL certificate (8-10 minutes). Then:
 
 ```bash
 terraform output -raw dashboard_url_with_token
 ```
 
-Open the URL in your browser — done! 🎉
+Open the HTTPS URL in your browser — done! 🎉
 
-**Note**: Configure Slack and S3 backups through OpenClaw's dashboard after deployment.
+**Note**: The first time you access the dashboard, you'll need to approve device pairing via SSH (see Device Pairing section). Configure Slack and S3 backups through OpenClaw's dashboard after deployment.
 
 ---
 
@@ -218,7 +244,9 @@ Open the URL in your browser — done! 🎉
 
 ## 🔒 Security Features
 
-- **IP Restriction** — Only your IP can access SSH (22) and dashboard (18789)
+- **HTTPS/SSL** — Valid Let's Encrypt certificates with auto-renewal
+- **IP Restriction** — Only your IP can access SSH (22)
+- **Device Pairing** — Secure multi-device authentication system
 - **IMDSv2** — Instance metadata service v2 required
 - **Encrypted EBS** — Root volume encrypted at rest
 - **Encrypted S3** — AES-256 server-side encryption
@@ -382,10 +410,11 @@ terraform destroy
 |----------|---------|-------------|
 | `aws_region` | `us-east-1` | AWS region |
 | `instance_type` | `t3.medium` | EC2 instance type |
-| `my_ip_cidrs` | — | Your IP(s) for access (required) |
+| `my_ip_cidrs` | — | Your IP(s) for SSH access (required) |
+| `domain_name` | — | Domain name for HTTPS (required) |
+| `email` | — | Email for SSL notifications (required) |
 | `anthropic_api_key` | — | Anthropic API key (required) |
-| `slack_bot_token` | — | Slack bot token (required) |
-| `slack_app_token` | — | Slack app token (required) |
+| `route53_zone_id` | (auto) | Route53 zone ID (optional) |
 
 ---
 
@@ -567,12 +596,20 @@ nano LOCAL_README.md
 ## Instance Info
 - Instance ID: i-xxxxx
 - Public IP: x.x.x.x
-- Dashboard: http://x.x.x.x:18789/?token=xxxxx
+- Domain: openclaw.yourdomain.com
+- Dashboard (HTTPS): https://openclaw.yourdomain.com/?token=xxxxx
+- Dashboard (Direct): http://x.x.x.x:18789/?token=xxxxx
+
+## SSL Certificate
+- Provider: Let's Encrypt
+- Expires: [Date]
+- Auto-renewal: Enabled
 
 ## Quick Commands
 ssh -i openclaw-key.pem ubuntu@x.x.x.x
 terraform output -raw dashboard_url_with_token
 aws s3 ls s3://my-bucket/backups/
+openclaw devices list
 
 ## Credentials
 - AWS Account: 123456789012

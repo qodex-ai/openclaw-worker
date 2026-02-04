@@ -14,11 +14,19 @@
 │                         YOUR SETUP                               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│   YOUR IP ONLY ──────►  EC2 (t3.medium, 4GB RAM)                │
-│   (SSH + Dashboard)      ├── Node.js 22 + npm                   │
-│                          ├── OpenClaw (via npm)                  │
-│                          ├── Docker (for openclaw internals)     │
-│                          └── Manual backups ─────► S3 Bucket    │
+│   your.domain.com ────►  Nginx HTTPS Proxy                      │
+│   (SSL Certificate)       ├── Let's Encrypt SSL                 │
+│                           └── Reverse Proxy ──► OpenClaw        │
+│                                                                  │
+│   EC2 Instance (t3.medium, 4GB RAM)                             │
+│   ├── Node.js 22 + npm                                          │
+│   ├── OpenClaw (via npm)                                        │
+│   ├── Docker (for OpenClaw internals)                           │
+│   ├── Nginx (HTTPS reverse proxy)                               │
+│   └── Certbot (SSL auto-renewal)                                │
+│                                                                  │
+│   Backups ──────────────► S3 Bucket (encrypted)                 │
+│   Route53 DNS ───────────► your.domain.com → EC2 IP            │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -30,7 +38,11 @@
 Before starting, gather these:
 
 - ✅ **AWS Account** (will create in Part 1 if needed)
+- ✅ **Domain Name** (e.g., `openclaw.yourdomain.com`) - HTTPS required for browser security
+- ✅ **Email Address** (for SSL certificate notifications)
 - ✅ **Anthropic API Key** (`sk-ant-...`)
+
+**Important**: A custom domain is required because modern browsers require HTTPS or localhost for Web APIs. The setup automatically obtains a free SSL certificate from Let's Encrypt.
 
 **Note**: Slack integration is configured through OpenClaw's interface after deployment.
 
@@ -237,13 +249,31 @@ echo "source ~/openclaw-infra/.aws.env" >> ~/.bashrc  # or ~/.zshrc for macOS
 
 ---
 
-# PART 6: Get Your IP Address
+# PART 6: Prepare Domain and Get IP
+
+## Step 6.1: Choose Your Domain
+
+You need a domain or subdomain for HTTPS access (required for browser security).
+
+**Options:**
+1. Use existing domain: `openclaw.yourdomain.com`
+2. Register new domain on AWS Route53, Namecheap, etc.
+3. Create subdomain in Route53
+
+**Example:** `jarvis.example.com`
+
+**Important:** Domain must be in Route53 (or you must be able to add Route53 nameservers)
+
+## Step 6.2: Get Your IP Address
 
 ```bash
 curl ifconfig.me
 ```
 
-**Write it down:** `___.___.___.___ `
+**Write down:**
+- Your IP: `___.___.___.___ `
+- Your domain: `________________`
+- Your email: `________________`
 
 ---
 
@@ -284,11 +314,20 @@ nano terraform.tfvars
 aws_region    = "us-east-1"
 instance_type = "t3.medium"
 
-# YOUR IP - from step 6 (add /32 at end!)
+# YOUR IP - from step 6.2 (add /32 at end!)
 my_ip_cidrs = ["203.0.113.50/32"]
 
 # Your Anthropic API key
 anthropic_api_key = "sk-ant-api03-xxxxxxxxxxxxx"
+
+# Your domain name (REQUIRED for HTTPS)
+domain_name = "openclaw.yourdomain.com"
+
+# Your email (for SSL certificate notifications)
+email = "you@example.com"
+
+# Optional: Route53 hosted zone ID (auto-discovered if not provided)
+# route53_zone_id = "Z1234567890ABC"
 ```
 
 Save: `Ctrl+X`, `Y`, `Enter`
@@ -403,9 +442,21 @@ Get URL:
 terraform output -raw dashboard_url_with_token
 ```
 
-Open in browser → You should see OpenClaw UI!
+**Example:** `https://openclaw.yourdomain.com/?token=...`
 
-## Step 10.3: Configure Integrations
+Open in browser → You should see OpenClaw UI with valid HTTPS (no security warnings)!
+
+## Step 10.3: Pair Your Browser
+
+On first access, OpenClaw requires device pairing:
+
+1. Try to open the dashboard (creates pairing request)
+2. SSH to server: `$(terraform output -raw ssh_command)`
+3. List requests: `openclaw devices list`
+4. Approve: `openclaw devices approve <request-id>`
+5. Refresh browser → Connected!
+
+## Step 10.4: Configure Integrations
 
 1. Open the OpenClaw dashboard
 2. Configure Slack integration (if needed) through the UI
