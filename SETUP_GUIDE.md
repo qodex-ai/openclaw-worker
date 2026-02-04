@@ -586,6 +586,85 @@ git pull origin main
 terraform init -upgrade
 ```
 
+### Error: Bootstrap Fails with "Package 'awscli' has no installation candidate"
+
+**Symptom**: EC2 bootstrap log shows error installing awscli package
+
+**Root Cause**: Ubuntu 24.04 doesn't include `awscli` in default apt repositories
+
+**Solution**: This is fixed in the latest version. Update your code:
+```bash
+git pull origin main
+terraform init -upgrade
+
+# If you need to recreate the instance
+terraform destroy  # Save backups first!
+terraform apply
+```
+
+**Manual Fix on Running Instance**:
+```bash
+# SSH to server
+ssh -i openclaw-key.pem ubuntu@<your-ip>
+
+# Install AWS CLI v2
+cd /tmp
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt-get install -y unzip
+unzip -q awscliv2.zip
+sudo ./aws/install
+rm -rf aws awscliv2.zip
+aws --version
+
+# Continue with bootstrap manually
+# (See bootstrap log for where it stopped)
+```
+
+### Error: Terraform Hangs for Hours on Apple Silicon (M3/M2/M1)
+
+**Symptom**: Terraform apply runs for 12+ hours without completing
+
+**Root Cause**: Intel x86_64 Terraform binary running under Rosetta on ARM64 Macs causes AWS provider crashes
+
+**Solution**: Install ARM64 native Terraform:
+
+```bash
+# 1. Kill stuck process
+ps aux | grep terraform  # Find PID
+kill <PID>
+
+# 2. Uninstall Intel version
+brew uninstall terraform
+
+# 3. Download ARM64 version
+cd ~/Downloads
+wget https://releases.hashicorp.com/terraform/1.14.4/terraform_1.14.4_darwin_arm64.zip
+unzip terraform_1.14.4_darwin_arm64.zip
+
+# 4. Install to ~/bin
+mkdir -p ~/bin
+mv terraform ~/bin/
+chmod +x ~/bin/terraform
+
+# 5. Add to PATH
+export PATH="$HOME/bin:$PATH"
+
+# Make permanent (add to ~/.zshrc):
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+
+# 6. Verify it's ARM64
+terraform --version
+file ~/bin/terraform  # Should show: Mach-O 64-bit executable arm64
+
+# 7. Reinitialize Terraform
+cd ~/openclaw-worker
+rm -rf .terraform .terraform.lock.hcl
+terraform init
+
+# 8. Deploy (should complete in ~1 minute)
+terraform apply
+```
+
 ## AWS Credential Issues
 
 ### Error: "InvalidClientTokenId"

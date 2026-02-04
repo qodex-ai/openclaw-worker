@@ -46,3 +46,7 @@ Thumbs.db
 
 # Credentials
 CREDENTIALS.txt
+
+# Local documentation with actual values
+LOCAL_README.md
+README.local.md
