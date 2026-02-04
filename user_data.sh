@@ -11,6 +11,8 @@ GATEWAY_TOKEN="${gateway_token}"
 S3_BUCKET="${s3_bucket}"
 AWS_REGION="${aws_region}"
 ANTHROPIC_API_KEY="${anthropic_api_key}"
+DOMAIN_NAME="${domain_name}"
+EMAIL="${email}"
 
 CONFIG_DIR="/home/ubuntu/.openclaw"
 export HOME="/home/ubuntu"
@@ -62,6 +64,16 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 usermod -aG docker ubuntu
 systemctl enable docker
+
+# Install Nginx
+echo ">>> Installing Nginx..."
+apt-get install -y nginx
+systemctl enable nginx
+systemctl stop nginx  # Stop temporarily for certbot standalone
+
+# Install Certbot for Let's Encrypt
+echo ">>> Installing Certbot..."
+apt-get install -y certbot python3-certbot-nginx
 
 # Install OpenClaw via npm
 echo ">>> Installing OpenClaw via npm..."
@@ -242,6 +254,75 @@ systemctl start openclaw.service
 # Wait for startup
 sleep 10
 
+# Configure Nginx as reverse proxy
+echo ">>> Configuring Nginx reverse proxy..."
+cat > /etc/nginx/sites-available/openclaw << 'NGINXCONF'
+server {
+    listen 80;
+    server_name $${DOMAIN_NAME};
+
+    # For Let's Encrypt verification
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Redirect HTTP to HTTPS
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name $${DOMAIN_NAME};
+
+    # SSL certificates (will be added by certbot)
+    ssl_certificate /etc/letsencrypt/live/$${DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$${DOMAIN_NAME}/privkey.pem;
+
+    # SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Proxy to OpenClaw gateway
+    location / {
+        proxy_pass http://localhost:18789;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+}
+NGINXCONF
+
+# Enable site
+ln -sf /etc/nginx/sites-available/openclaw /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Get SSL certificate from Let's Encrypt
+echo ">>> Obtaining SSL certificate from Let's Encrypt..."
+certbot certonly --nginx \
+  --non-interactive \
+  --agree-tos \
+  --email $EMAIL \
+  --domains $DOMAIN_NAME \
+  --redirect
+
+# Start Nginx
+echo ">>> Starting Nginx..."
+systemctl start nginx
+systemctl enable nginx
+
+# Setup auto-renewal
+echo ">>> Setting up SSL certificate auto-renewal..."
+systemctl enable certbot.timer
+systemctl start certbot.timer
+
 # Save credentials file
 PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 cat > /home/ubuntu/CREDENTIALS.txt << EOF
@@ -249,7 +330,10 @@ cat > /home/ubuntu/CREDENTIALS.txt << EOF
                     OPENCLAW CREDENTIALS
 ═══════════════════════════════════════════════════════════════
 
-Dashboard URL:
+Dashboard URL (HTTPS):
+  https://$DOMAIN_NAME/?token=$GATEWAY_TOKEN
+
+Dashboard URL (Direct - HTTP):
   http://$PUBLIC_IP:18789/?token=$GATEWAY_TOKEN
 
 Gateway Token:
