@@ -497,7 +497,31 @@ sudo cat /var/log/openclaw-bootstrap.log
 
 ### Manual Backup Not Working
 
-Ensure the EC2 instance has S3 access (IAM role automatically configured by Terraform).
+**Verify IAM role:**
+```bash
+# SSH to server
+$(terraform output -raw ssh_command)
+
+# Test S3 access
+aws s3 ls s3://$(terraform output -raw s3_bucket)/
+
+# If it fails, check IAM role attachment
+aws sts get-caller-identity
+```
+
+The EC2 instance has an IAM role automatically configured by Terraform. If backups fail:
+
+1. Verify the role is attached to the instance
+2. Check CloudWatch logs for permissions errors
+3. Ensure the S3 bucket exists: `terraform output s3_bucket`
+
+**Test backup:**
+```bash
+ssh -i openclaw-key.pem ubuntu@<your-ip>
+oc backup
+```
+
+Expected output: `Backup uploaded: s3://your-bucket/backups/openclaw-backup-YYYYMMDD-HHMMSS.tar.gz`
 
 ### Bootstrap Fails: "Package 'awscli' has no installation candidate"
 

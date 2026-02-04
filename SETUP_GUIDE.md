@@ -463,6 +463,32 @@ On first access, OpenClaw requires device pairing:
 3. Add your AWS credentials for S3 backups (if needed)
 4. Set up any other integrations you need
 
+## Step 10.5: Test Backup (Recommended)
+
+Verify that S3 backups are working:
+
+```bash
+# SSH to server
+$(terraform output -raw ssh_command)
+
+# Create a test backup
+oc backup
+```
+
+Expected output:
+```
+Creating backup: openclaw-backup-20260204-121442.tar.gz
+Backup uploaded: s3://openclaw-backups-xxxxx/backups/openclaw-backup-20260204-121442.tar.gz
+```
+
+Verify from your local machine:
+```bash
+# List backups in S3
+aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
+```
+
+You should see your backup file listed with AES-256 encryption.
+
 ---
 
 # PART 11: Daily Operations
@@ -808,15 +834,49 @@ oc logs
 ### How do I backup manually?
 
 ```bash
+# SSH to server
 $(terraform output -raw ssh_command)
+
+# Create backup
 oc backup
 ```
 
+Expected output:
+```
+Creating backup: openclaw-backup-20260204-121442.tar.gz
+Backup uploaded: s3://your-bucket/backups/openclaw-backup-20260204-121442.tar.gz
+```
+
+The backup includes:
+- OpenClaw configuration
+- Workspace data (IDENTITY, MEMORY, AGENTS)
+- Device credentials and pairing info
+- Agent sessions
+- Environment variables
+
 ### Where are my backups stored?
 
+**List backups:**
 ```bash
+# From local machine
 aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
+
+# From server
+ssh -i openclaw-key.pem ubuntu@<your-ip>
+oc restore  # Shows available backups
 ```
+
+**Restore a backup:**
+```bash
+$(terraform output -raw ssh_command)
+oc restore openclaw-backup-20260204-121442.tar.gz
+```
+
+**Backup details:**
+- Location: S3 bucket (encrypted with AES-256)
+- Lifecycle: Auto-deleted after 180 days
+- Size: ~80-100 KB per backup
+- Format: tar.gz compressed archive
 
 ---
 
