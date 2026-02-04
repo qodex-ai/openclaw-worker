@@ -20,3 +20,19 @@ variable "anthropic_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "domain_name" {
+  description = "Domain name for HTTPS access (e.g., jarvis.example.com). Required for SSL certificate."
+  type        = string
+}
+
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID for the domain (optional - will be looked up if not provided)"
+  type        = string
+  default     = ""
+}
+
+variable "email" {
+  description = "Email address for Let's Encrypt SSL certificate notifications"
+  type        = string
+}

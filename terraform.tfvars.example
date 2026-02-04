@@ -17,3 +17,17 @@ my_ip_cidrs = ["YOUR_IP_HERE/32"]
 # ANTHROPIC API KEY - REQUIRED
 # Get from: https://console.anthropic.com/
 anthropic_api_key = "sk-ant-YOUR-KEY-HERE"
+
+# DOMAIN NAME - REQUIRED
+# Must be a domain you own (e.g., openclaw.example.com)
+# DNS will be configured automatically via Route53
+domain_name = "openclaw.example.com"
+
+# EMAIL - REQUIRED
+# Used for Let's Encrypt SSL certificate notifications
+email = "your-email@example.com"
+
+# ROUTE53 HOSTED ZONE ID - OPTIONAL
+# If not provided, will be looked up automatically from domain name
+# Get from AWS Console: Route53 → Hosted Zones
+# route53_zone_id = "Z1234567890ABC"

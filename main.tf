@@ -84,6 +84,24 @@ resource "aws_security_group" "openclaw" {
     cidr_blocks = var.my_ip_cidrs
   }
 
+  # HTTPS - Your IP only (for SSL-enabled dashboard)
+  ingress {
+    description = "HTTPS from my IP"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.my_ip_cidrs
+  }
+
+  # HTTP - Your IP only (for Let's Encrypt challenge)
+  ingress {
+    description = "HTTP from my IP (certbot validation)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = var.my_ip_cidrs
+  }
+
   # All outbound (needed for Slack, AI APIs, etc.)
   egress {
     description = "All outbound"
@@ -192,6 +210,21 @@ resource "aws_iam_instance_profile" "openclaw" {
   role = aws_iam_role.openclaw.name
 }
 
+# Route53 - DNS for HTTPS
+data "aws_route53_zone" "domain" {
+  zone_id      = var.route53_zone_id != "" ? var.route53_zone_id : null
+  name         = var.route53_zone_id == "" ? "${replace(var.domain_name, "/^[^.]+\\./", "")}." : null
+  private_zone = false
+}
+
+resource "aws_route53_record" "openclaw" {
+  zone_id = data.aws_route53_zone.domain.zone_id
+  name    = var.domain_name
+  type    = "A"
+  ttl     = 300
+  records = [aws_eip.openclaw.public_ip]
+}
+
 # EC2 Instance
 resource "aws_instance" "openclaw" {
   ami                    = data.aws_ami.ubuntu.id
@@ -213,6 +246,8 @@ resource "aws_instance" "openclaw" {
     s3_bucket         = aws_s3_bucket.backups.bucket
     aws_region        = var.aws_region
     anthropic_api_key = var.anthropic_api_key
+    domain_name       = var.domain_name
+    email             = var.email
   }))
 
   metadata_options {

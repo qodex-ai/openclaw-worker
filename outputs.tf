@@ -10,13 +10,18 @@ output "ssh_command" {
 
 output "dashboard_url" {
   description = "Dashboard URL (no token)"
-  value       = "http://${aws_eip.openclaw.public_ip}:18789"
+  value       = "https://${var.domain_name}"
 }
 
 output "dashboard_url_with_token" {
-  description = "Dashboard URL with token"
-  value       = "http://${aws_eip.openclaw.public_ip}:18789/?token=${random_password.gateway_token.result}"
+  description = "Dashboard URL with token (HTTPS)"
+  value       = "https://${var.domain_name}/?token=${random_password.gateway_token.result}"
   sensitive   = true
+}
+
+output "domain_name" {
+  description = "Domain name for dashboard"
+  value       = var.domain_name
 }
 
 output "gateway_token" {
