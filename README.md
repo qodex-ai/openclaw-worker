@@ -37,6 +37,16 @@ Open the URL in your browser. Done! ✅
 
 For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
+### 📝 After Deployment
+
+After successful deployment, create a `LOCAL_README.md` file (git-ignored) to store your actual configuration:
+- EC2 instance details, SSH keys, IP addresses
+- Dashboard URLs with tokens
+- S3 bucket names
+- Quick reference commands with your real values
+
+See the template at the end of this README.
+
 ---
 
 ## 🎯 What This Does
@@ -413,6 +423,66 @@ sudo cat /var/log/openclaw-bootstrap.log
 
 Ensure the EC2 instance has S3 access (IAM role automatically configured by Terraform).
 
+### Bootstrap Fails: "Package 'awscli' has no installation candidate"
+
+**Fixed in latest version.** If you encounter this with an older version:
+
+**Problem:** Ubuntu 24.04 doesn't have `awscli` in default apt repositories.
+
+**Solution:** The `user_data.sh` script now installs AWS CLI v2 directly from Amazon. Update to the latest version:
+```bash
+git pull origin main
+terraform init -upgrade
+terraform apply
+```
+
+If you need to fix a running instance manually:
+```bash
+ssh -i openclaw-key.pem ubuntu@<your-ip>
+cd /tmp
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt-get install -y unzip
+unzip -q awscliv2.zip
+sudo ./aws/install
+rm -rf aws awscliv2.zip
+aws --version
+```
+
+### Terraform Hangs on Apple Silicon (M3/M2/M1)
+
+**Problem:** Terraform stuck for hours during apply on Apple Silicon Macs.
+
+**Root Cause:** Intel x86_64 Terraform running under Rosetta causes AWS provider crashes.
+
+**Solution:** Use ARM64 native Terraform:
+```bash
+# Uninstall Intel version
+brew uninstall terraform
+
+# Download ARM64 version
+cd ~/Downloads
+wget https://releases.hashicorp.com/terraform/1.14.4/terraform_1.14.4_darwin_arm64.zip
+unzip terraform_1.14.4_darwin_arm64.zip
+
+# Install to ~/bin
+mkdir -p ~/bin
+mv terraform ~/bin/
+chmod +x ~/bin/terraform
+
+# Add to PATH (add this to ~/.zshrc for persistence)
+export PATH="$HOME/bin:$PATH"
+
+# Verify
+terraform --version
+file ~/bin/terraform  # Should show: Mach-O 64-bit executable arm64
+
+# Reinitialize to get ARM64 providers
+cd ~/Projects/flinket/jarvis/openclaw-worker
+rm -rf .terraform
+terraform init
+terraform apply
+```
+
 ---
 
 ## 📚 Resources
@@ -423,6 +493,47 @@ Ensure the EC2 instance has S3 access (IAM role automatically configured by Terr
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
 - [AWS EC2 Pricing](https://aws.amazon.com/ec2/pricing/)
 - [Complete Setup Guide](SETUP_GUIDE.md) - Step-by-step instructions
+
+---
+
+## 📝 LOCAL_README.md Template
+
+After deployment, create a `LOCAL_README.md` file (automatically git-ignored) to store your actual configuration values:
+
+```bash
+# Create your local documentation
+nano LOCAL_README.md
+```
+
+**What to include:**
+- EC2 instance ID, public IP, SSH key path
+- Dashboard URL with token
+- S3 bucket name
+- Actual Terraform commands with your values
+- AWS credentials reference
+- Quick reference commands for daily use
+
+**Example structure:**
+```markdown
+# My OpenClaw Deployment
+
+## Instance Info
+- Instance ID: i-xxxxx
+- Public IP: x.x.x.x
+- Dashboard: http://x.x.x.x:18789/?token=xxxxx
+
+## Quick Commands
+ssh -i openclaw-key.pem ubuntu@x.x.x.x
+terraform output -raw dashboard_url_with_token
+aws s3 ls s3://my-bucket/backups/
+
+## Credentials
+- AWS Account: 123456789012
+- S3 Bucket: my-openclaw-backups-xxx
+- Anthropic Key: sk-ant-xxx...
+```
+
+This keeps your actual values separate from version control while maintaining easy access to deployment details.
 
 ---
 
