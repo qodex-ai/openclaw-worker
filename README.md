@@ -255,6 +255,53 @@ Then use the `oc` command:
 
 ---
 
+## 🔗 Device Pairing
+
+OpenClaw uses device pairing for secure access. When you first access the dashboard, you'll need to pair your browser.
+
+### Pairing a New Device/Browser
+
+1. **Access the dashboard** - Open the dashboard URL in your browser
+2. **SSH to server**:
+   ```bash
+   $(terraform output -raw ssh_command)
+   ```
+3. **List pending pairing requests**:
+   ```bash
+   openclaw devices list
+   ```
+4. **Approve the request**:
+   ```bash
+   openclaw devices approve <request-id>
+   ```
+5. **Refresh the dashboard** - Your browser is now paired!
+
+### Device Management Commands
+
+```bash
+openclaw devices list      # List pending and paired devices
+openclaw devices approve   # Approve a pending device
+openclaw devices reject    # Reject a pending device
+openclaw devices revoke    # Revoke a paired device
+```
+
+### Alternative: Token-Only Mode
+
+If you prefer to skip device pairing and use only the gateway token:
+
+```bash
+openclaw config set gateway.auth.mode token
+sudo systemctl restart openclaw
+```
+
+To revert to pairing mode:
+```bash
+openclaw config unset gateway.auth.mode
+sudo systemctl restart openclaw
+```
+
+---
+
 ## 🔄 Common Operations
 
 ### Update your IP address
