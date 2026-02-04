@@ -94,21 +94,20 @@ EOF
 chown ubuntu:ubuntu /home/ubuntu/.env
 chmod 600 /home/ubuntu/.env
 
-# Create openclaw config file
-sudo -u ubuntu cat > $CONFIG_DIR/config.json << EOF
+# Create openclaw config file (openclaw.json)
+sudo -u ubuntu cat > $CONFIG_DIR/openclaw.json << EOF
 {
   "gateway": {
-    "token": "$GATEWAY_TOKEN",
-    "port": 18789,
-    "bind": "0.0.0.0"
-  },
-  "anthropic": {
-    "apiKey": "$ANTHROPIC_API_KEY"
+    "mode": "local",
+    "auth": {
+      "token": "$GATEWAY_TOKEN"
+    },
+    "port": 18789
   }
 }
 EOF
-chown ubuntu:ubuntu $CONFIG_DIR/config.json
-chmod 600 $CONFIG_DIR/config.json
+chown ubuntu:ubuntu $CONFIG_DIR/openclaw.json
+chmod 600 $CONFIG_DIR/openclaw.json
 
 # Create management script
 echo ">>> Creating management script..."
@@ -223,10 +222,11 @@ User=ubuntu
 Environment=HOME=/home/ubuntu
 EnvironmentFile=/home/ubuntu/.env
 WorkingDirectory=/home/ubuntu
-ExecStart=/usr/bin/openclaw up --token $${OPENCLAW_GATEWAY_TOKEN}
-ExecStop=/usr/bin/pkill -f openclaw
-Restart=on-failure
+ExecStart=/usr/bin/openclaw gateway --port 18789 --bind lan
+Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
