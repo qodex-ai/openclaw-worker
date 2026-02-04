@@ -84,11 +84,12 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 - **User Data Script** — Automated installation and configuration
 - **SSL Certificate** — Automatic acquisition and renewal via Let's Encrypt
 - **DNS Management** — Route53 A record automatically created
+- **Automated Daily Backups** — Cron job runs daily at 2 AM UTC
 - **Manual Backups** — On-demand backup to S3 via `oc backup` command
 - **S3 Lifecycle Policy** — Automatic deletion after 180 days
 - **GitHub Actions** — CI/CD with Terraform validation and security scanning
 
-**Note**: Configure automated backups through OpenClaw's interface using your AWS credentials.
+**Note**: Daily backups run automatically. Additional backups can be configured through OpenClaw's interface if needed.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -221,7 +222,7 @@ terraform output -raw dashboard_url_with_token
 
 Open the HTTPS URL in your browser — done! 🎉
 
-**Note**: The first time you access the dashboard, you'll need to approve device pairing via SSH (see Device Pairing section). Configure Slack and S3 backups through OpenClaw's dashboard after deployment.
+**Note**: The first time you access the dashboard, you'll need to approve device pairing via SSH (see Device Pairing section). Daily S3 backups run automatically at 2 AM UTC. Configure Slack integration through OpenClaw's dashboard after deployment.
 
 ---
 
@@ -236,6 +237,7 @@ Open the HTTPS URL in your browser — done! 🎉
 | `terraform.tfvars.example` | Template for Terraform variables (copy to `terraform.tfvars`) |
 | `.aws.env.example` | Template for AWS credentials (copy to `.aws.env`) |
 | `SETUP_GUIDE.md` | Complete step-by-step deployment guide (~45 minutes) |
+| `CRON_BACKUPS.md` | Automated backup configuration and management guide |
 | `.github/workflows/ci.yml` | Automated Terraform validation and security scanning |
 | `.gitignore` | Git ignore rules for Terraform and sensitive files |
 | `LICENSE` | MIT License (2025 Qodex AI) |
@@ -273,13 +275,13 @@ Then use the `oc` command:
 | `oc restart` | Restart OpenClaw |
 | `oc stop` | Stop OpenClaw |
 | `oc start` | Start OpenClaw |
-| `oc backup` | Manual backup to S3 (on-demand only) |
+| `oc backup` | Manual backup to S3 (on-demand) |
 | `oc restore <file>` | Restore from S3 backup |
 | `oc update` | Update OpenClaw to latest |
 | `oc url` | Show dashboard URL with token |
 | `oc token` | Show gateway token |
 
-**Note**: Automated daily backups are disabled. Configure backups within OpenClaw using your AWS credentials.
+**Automated Backups**: Daily backups run automatically at 2 AM UTC via cron. View logs: `tail -f ~/.openclaw/backup.log`
 
 ---
 
@@ -357,7 +359,25 @@ oc update
 ### View backups
 
 ```bash
+# List all backups in S3
 aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
+
+# View automated backup logs
+ssh -i openclaw-key.pem ubuntu@<your-ip>
+tail -f ~/.openclaw/backup.log
+```
+
+### Check backup schedule
+
+```bash
+# SSH into server
+$(terraform output -raw ssh_command)
+
+# View cron schedule
+crontab -l
+
+# Check recent automated backups
+tail -20 ~/.openclaw/backup.log
 ```
 
 ### Restore from backup
@@ -593,6 +613,7 @@ terraform apply
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest)
 - [AWS EC2 Pricing](https://aws.amazon.com/ec2/pricing/)
 - [Complete Setup Guide](SETUP_GUIDE.md) - Step-by-step instructions
+- [Automated Backup Guide](CRON_BACKUPS.md) - Cron backup configuration and management
 
 ---
 

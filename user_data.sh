@@ -323,6 +323,15 @@ echo ">>> Setting up SSL certificate auto-renewal..."
 systemctl enable certbot.timer
 systemctl start certbot.timer
 
+# Setup automated daily backups
+echo ">>> Setting up automated daily backups..."
+sudo -u ubuntu crontab -l 2>/dev/null > /tmp/crontab_temp || true
+echo "# Automated daily backup to S3 at 2 AM UTC" >> /tmp/crontab_temp
+echo "0 2 * * * bash -l -c '/home/ubuntu/bin/oc backup >> /home/ubuntu/.openclaw/backup.log 2>&1'" >> /tmp/crontab_temp
+sudo -u ubuntu crontab /tmp/crontab_temp
+rm /tmp/crontab_temp
+echo "Automated daily backups enabled (runs at 2 AM UTC)"
+
 # Save credentials file
 PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 cat > /home/ubuntu/CREDENTIALS.txt << EOF
@@ -352,7 +361,8 @@ Quick Commands:
   oc url      - Show dashboard URL
   oc update   - Update OpenClaw
 
-Note: Automated daily backups are disabled. Configure backups through OpenClaw.
+Automated Backups: Daily at 2 AM UTC (cron)
+View backup logs: tail -f ~/.openclaw/backup.log
 
 ═══════════════════════════════════════════════════════════════
 EOF

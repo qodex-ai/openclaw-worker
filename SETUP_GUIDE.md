@@ -500,13 +500,48 @@ You should see your backup file listed with AES-256 encryption.
 | `oc status` | Check if running |
 | `oc logs` | View logs |
 | `oc restart` | Restart OpenClaw |
-| `oc backup` | Manual backup to S3 (on-demand only) |
+| `oc backup` | Manual backup to S3 (on-demand) |
 | `oc restore` | Restore from S3 |
 | `oc update` | Update to latest version |
 | `oc url` | Show dashboard URL |
 | `oc token` | Show gateway token |
 
-**Note**: Automated daily backups are disabled. Configure scheduled backups through OpenClaw's interface.
+**Automated Backups**: Daily backups run automatically at 2 AM UTC via cron.
+- View backup logs: `tail -f ~/.openclaw/backup.log`
+- Check schedule: `crontab -l`
+
+## Automated Backup Management
+
+Daily backups are automatically configured during deployment.
+
+**View recent backups:**
+```bash
+# On server
+tail -20 ~/.openclaw/backup.log
+
+# From local machine
+aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/ --human-readable
+```
+
+**Check backup schedule:**
+```bash
+$(terraform output -raw ssh_command)
+crontab -l
+```
+
+**Customize backup time:**
+```bash
+# Edit crontab (change "0 2" to desired hour)
+crontab -e
+
+# Example: Change to 3:30 AM UTC
+30 3 * * * bash -l -c '/home/ubuntu/bin/oc backup >> /home/ubuntu/.openclaw/backup.log 2>&1'
+```
+
+**Disable automated backups:**
+```bash
+crontab -l | grep -v "oc backup" | crontab -
+```
 
 ## From Your Computer
 
@@ -609,12 +644,16 @@ aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
 oc status    # Check if OpenClaw is running
 oc logs      # View live logs
 oc restart   # Restart OpenClaw service
-oc backup    # Create manual backup to S3 (no automated backups)
+oc backup    # Create manual backup to S3
 oc update    # Update OpenClaw to latest version
 oc url       # Show dashboard URL with token
+
+# Backup management
+tail -f ~/.openclaw/backup.log  # View automated backup logs
+crontab -l                       # View backup schedule (daily 2 AM UTC)
 ```
 
-**Note**: Configure automated backups within OpenClaw using your AWS credentials.
+**Automated Backups**: Daily backups run automatically at 2 AM UTC. Additional backups can be triggered manually with `oc backup`.
 
 ## Quick Reference Card
 
