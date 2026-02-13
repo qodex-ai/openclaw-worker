@@ -161,13 +161,13 @@ case "$1" in
         ;;
     update)
         echo "Updating OpenClaw..."
-        npm update -g openclaw
+        sudo npm update -g openclaw
         $0 restart
         ;;
     backup)
         FILE="openclaw-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
         echo "Creating backup: $FILE"
-        tar -czvf "/tmp/$FILE" ~/.openclaw ~/.env 2>/dev/null
+        tar -czvf "/tmp/$FILE" --exclude='node_modules' --exclude='*.deleted.*' ~/.openclaw ~/.env 2>/dev/null
         aws s3 cp "/tmp/$FILE" "s3://$OPENCLAW_S3_BUCKET/backups/$FILE"
         rm "/tmp/$FILE"
         echo "Backup uploaded: s3://$OPENCLAW_S3_BUCKET/backups/$FILE"
