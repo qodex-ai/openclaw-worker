@@ -93,13 +93,15 @@ resource "aws_security_group" "openclaw" {
     cidr_blocks = var.my_ip_cidrs
   }
 
-  # HTTP - Your IP only (for Let's Encrypt challenge)
+  # HTTP - Open to world for Let's Encrypt HTTP-01 challenges.
+  # Nginx redirects all HTTP to HTTPS, so this isn't a real exposure.
+  # MUST stay open to 0.0.0.0/0 or certbot auto-renewal silently fails.
   ingress {
-    description = "HTTP from my IP (certbot validation)"
+    description = "HTTP for Lets Encrypt ACME challenges (auto-redirects to HTTPS)"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.my_ip_cidrs
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # All outbound (needed for Slack, AI APIs, etc.)
