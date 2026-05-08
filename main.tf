@@ -235,7 +235,7 @@ resource "aws_instance" "openclaw" {
   subnet_id              = data.aws_subnets.default.ids[0]
 
   root_block_device {
-    volume_size           = 20
+    volume_size           = 40
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true

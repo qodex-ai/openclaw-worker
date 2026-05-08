@@ -543,6 +543,24 @@ oc backup
 
 Expected output: `Backup uploaded: s3://your-bucket/backups/openclaw-backup-YYYYMMDD-HHMMSS.tar.gz`
 
+### 502 Bad Gateway After Update (allowedOrigins Error)
+
+**Problem:** After updating OpenClaw (v2026.2.26+), the service crash-loops and nginx returns 502 Bad Gateway.
+
+**Root Cause:** OpenClaw now requires `gateway.controlUi.allowedOrigins` for non-loopback deployments (CORS security).
+
+**Solution:**
+```bash
+# SSH into server
+$(terraform output -raw ssh_command)
+
+# Set allowed origins to your domain
+openclaw config set gateway.controlUi.allowedOrigins '["https://your-domain.com"]'
+sudo systemctl restart openclaw
+```
+
+**Note:** New deployments using the latest `user_data.sh` include this setting automatically.
+
 ### Bootstrap Fails: "Package 'awscli' has no installation candidate"
 
 **Fixed in latest version.** If you encounter this with an older version:

@@ -114,7 +114,10 @@ sudo -u ubuntu cat > $CONFIG_DIR/openclaw.json << EOF
     "auth": {
       "token": "$GATEWAY_TOKEN"
     },
-    "port": 18789
+    "port": 18789,
+    "controlUi": {
+      "allowedOrigins": ["https://$DOMAIN_NAME"]
+    }
   }
 }
 EOF
