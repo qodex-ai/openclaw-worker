@@ -60,7 +60,7 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 ### Infrastructure Components
 
-- **EC2 Instance** (t3.medium) — 4GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
+- **EC2 Instance** (t3.large, T3 unlimited mode) — 8GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
 - **Security Group** — Locked down to your IP (SSH), HTTPS/HTTP open for SSL validation
 - **S3 Bucket** — Encrypted backups with automatic cleanup (180 days retention)
 - **IAM Role & Instance Profile** — Secure EC2-to-S3 access without hardcoded credentials
@@ -99,7 +99,7 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 │   YOUR DOMAIN ──────►  Route53 DNS                              │
 │   (HTTPS/SSL)              │                                    │
 │                            ▼                                    │
-│                       EC2 (t3.medium)                            │
+│                       EC2 (t3.large)                             │
 │                            │                                    │
 │   Let's Encrypt ────► Nginx (HTTPS) ──► OpenClaw (:18789)      │
 │   (SSL Cert)               │                 │                  │
@@ -120,10 +120,13 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 | Resource | Monthly Cost |
 |----------|-------------|
-| EC2 t3.medium | ~$30 |
-| EBS 20GB | ~$2 |
+| EC2 t3.large (T3 unlimited) | ~$61 |
+| EBS 40GB (gp3) | ~$3 |
 | S3 backups | ~$1 |
-| **Total** | **~$33/month** |
+| Data transfer | ~$1-2 |
+| **Total** | **~$66-72/month** |
+
+> **Why not t3.medium?** OpenClaw 2026.5.x+ (with externalized plugins like lossless-claw, ACPX, slack, brave, memory-core all loaded) OOMs on 4GB RAM. t3.large (8GB) is the floor. T3 unlimited mode is also enabled so the instance can burn over the 20% CPU baseline without getting throttled to a crawl — pay-per-burst at ~$0.05/vCPU-hour over baseline.
 
 ---
 
@@ -185,7 +188,7 @@ nano terraform.tfvars
 Edit with your values:
 ```hcl
 aws_region    = "us-east-1"
-instance_type = "t3.medium"
+instance_type = "t3.large"
 
 # Your IP (add /32 at the end)
 my_ip_cidrs = ["49.47.128.13/32"]
@@ -429,7 +432,7 @@ terraform destroy
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `aws_region` | `us-east-1` | AWS region |
-| `instance_type` | `t3.medium` | EC2 instance type |
+| `instance_type` | `t3.large` | EC2 instance type (required for OpenClaw 2026.5.x+) |
 | `my_ip_cidrs` | — | Your IP(s) for SSH access (required) |
 | `domain_name` | — | Domain name for HTTPS (required) |
 | `email` | — | Email for SSL notifications (required) |
@@ -443,9 +446,9 @@ terraform destroy
 ### Use a different instance type
 
 ```hcl
-instance_type = "t3.small"   # $15/month, 2GB RAM
-instance_type = "t3.medium"  # $30/month, 4GB RAM (default)
-instance_type = "t3.large"   # $60/month, 8GB RAM
+instance_type = "t3.medium"  # $30/month, 4GB RAM (TOO SMALL for OpenClaw 2026.5.x+; will OOM)
+instance_type = "t3.large"   # $60/month, 8GB RAM (default, recommended)
+instance_type = "t3.xlarge"  # $120/month, 16GB RAM
 ```
 
 ### Allow multiple IPs

@@ -258,6 +258,13 @@ resource "aws_instance" "openclaw" {
     http_endpoint               = "enabled"
   }
 
+  # T3 unlimited mode. Lets OpenClaw burn over the 20% baseline without
+  # getting throttled to a crawl. Pay-per-burst at ~$0.05/vCPU-hour over
+  # baseline, capped near the cost of t3.large. Cheaper than upsizing.
+  credit_specification {
+    cpu_credits = "unlimited"
+  }
+
   tags = { Name = "openclaw-server" }
 
   lifecycle { ignore_changes = [ami] }
