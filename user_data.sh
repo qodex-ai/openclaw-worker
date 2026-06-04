@@ -107,6 +107,14 @@ chown ubuntu:ubuntu /home/ubuntu/.env
 chmod 600 /home/ubuntu/.env
 
 # Create openclaw config file (openclaw.json)
+#
+# tools.profile = "coding": OpenClaw v2026.4.29+ runs isolated sessions (incl. cron jobs)
+# under a restrictive default tool profile ("messaging") that strips exec + filesystem
+# tools, and a configured tools.exec no longer implicitly widens it. Without "coding",
+# every cron job that runs scripts or reads files silently degrades to a fake "ok" with
+# "filesystem/terminal tooling unavailable in this session". "coding" grants the full
+# working tool set (exec, fs read/write, web, messaging). This is also the fresh-install
+# default since v2026.4.22.
 sudo -u ubuntu cat > $CONFIG_DIR/openclaw.json << EOF
 {
   "gateway": {
@@ -118,6 +126,9 @@ sudo -u ubuntu cat > $CONFIG_DIR/openclaw.json << EOF
     "controlUi": {
       "allowedOrigins": ["https://$DOMAIN_NAME"]
     }
+  },
+  "tools": {
+    "profile": "coding"
   }
 }
 EOF
