@@ -5,9 +5,9 @@ variable "aws_region" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type"
+  description = "EC2 instance type. t3.large recommended for OpenClaw 2026.5.x+ (8GB RAM); t3.medium OOMs on the modern plugin set."
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "my_ip_cidrs" {
