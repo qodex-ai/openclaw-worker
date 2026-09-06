@@ -127,9 +127,11 @@ resource "aws_key_pair" "openclaw" {
   public_key = tls_private_key.openclaw.public_key_openssh
 }
 
+# One key file per workspace, or applying a second workspace overwrites the
+# running box's key and locks you out of it.
 resource "local_file" "private_key" {
   content         = tls_private_key.openclaw.private_key_pem
-  filename        = "${path.module}/openclaw-key.pem"
+  filename        = "${path.module}/openclaw-key-${terraform.workspace}.pem"
   file_permission = "0400"
 }
 
@@ -212,15 +214,19 @@ resource "aws_iam_instance_profile" "openclaw" {
   role = aws_iam_role.openclaw.name
 }
 
-# Route53 - DNS for HTTPS
+# Route53 - DNS for HTTPS.
+# Only one workspace may own the record. Apply a second workspace with
+# manage_dns=false, then move the record by hand at cutover.
 data "aws_route53_zone" "domain" {
+  count        = var.manage_dns ? 1 : 0
   zone_id      = var.route53_zone_id != "" ? var.route53_zone_id : null
   name         = var.route53_zone_id == "" ? "${replace(var.domain_name, "/^[^.]+\\./", "")}." : null
   private_zone = false
 }
 
 resource "aws_route53_record" "openclaw" {
-  zone_id = data.aws_route53_zone.domain.zone_id
+  count   = var.manage_dns ? 1 : 0
+  zone_id = data.aws_route53_zone.domain[0].zone_id
   name    = var.domain_name
   type    = "A"
   ttl     = 300
@@ -243,14 +249,18 @@ resource "aws_instance" "openclaw" {
     delete_on_termination = true
   }
 
-  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+  # The aws provider base64-encodes user_data itself. Encoding here too would
+  # double-encode it and cloud-init would run nothing.
+  user_data = templatefile("${path.module}/user_data.sh", {
     gateway_token     = random_password.gateway_token.result
     s3_bucket         = aws_s3_bucket.backups.bucket
     aws_region        = var.aws_region
     anthropic_api_key = var.anthropic_api_key
     domain_name       = var.domain_name
     email             = var.email
-  }))
+    openclaw_version  = var.openclaw_version
+    node_min_version  = var.node_min_version
+  })
 
   metadata_options {
     http_tokens                 = "required"
@@ -267,7 +277,9 @@ resource "aws_instance" "openclaw" {
 
   tags = { Name = "openclaw-server" }
 
-  lifecycle { ignore_changes = [ami] }
+  # user_data is ignored so editing the provisioning script never replaces the
+  # running box. A rebuild is deliberate: taint the instance or use a new workspace.
+  lifecycle { ignore_changes = [ami, user_data] }
 }
 
 # Elastic IP

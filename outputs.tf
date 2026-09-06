@@ -5,7 +5,7 @@ output "instance_public_ip" {
 
 output "ssh_command" {
   description = "SSH command"
-  value       = "ssh -i openclaw-key.pem ubuntu@${aws_eip.openclaw.public_ip}"
+  value       = "ssh -i ${local_file.private_key.filename} ubuntu@${aws_eip.openclaw.public_ip}"
 }
 
 output "dashboard_url" {
@@ -51,7 +51,7 @@ output "security_note" {
        oc restart  - Restart OpenClaw
        oc backup   - Manual backup to S3
        oc url      - Show dashboard URL with token
-       oc update   - Update OpenClaw to latest version
+       oc update <version> - Pin OpenClaw and plugins to a version
     ════════════════════════════════════════════════════════════════
   EOT
 }
