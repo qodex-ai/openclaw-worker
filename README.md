@@ -44,13 +44,22 @@ For detailed instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
 
 ### 📝 After Deployment
 
-After successful deployment, create a `LOCAL_README.md` file (git-ignored) to store your actual configuration:
-- EC2 instance details, SSH keys, IP addresses
-- Dashboard URLs with tokens
-- S3 bucket names
-- Quick reference commands with your real values
+The bootstrap installs and configures OpenClaw (pinned to `openclaw_version`, default `2026.9.2`),
+its plugins, the systemd unit and the certificate. Five things still need a human, and the same
+list is printed to `/etc/motd` on the box:
 
-See the template at the end of this README.
+1. Add the box's SSH public key as a **deploy key** on the canon repo.
+2. `bash ops/openclaw/bootstrap.sh main` (canon sparse checkout, state dir, codex CLI, pull timer).
+3. Two **device logins**, both needing a TTY (`ssh -tt`): `codex login --device-auth` and
+   `openclaw models auth login --provider openai --device-code`.
+4. `python3 ops/openclaw/apply_cron.py --apply` to load the schedule.
+5. Enable `canon-pull.timer` **last**, and only after any old box's gateway and timer are stopped.
+
+Day-to-day operation of the box lives in canon `ops/openclaw/RUNBOOK.md`, not here. This repo is
+the rebuild path.
+
+Also create a `LOCAL_README.md` (git-ignored) for your actual instance details, dashboard URLs,
+and bucket names. Template at the end of this README.
 
 ---
 
@@ -60,34 +69,34 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 
 ### Infrastructure Components
 
-- **EC2 Instance** (t3.large, T3 unlimited mode) — 8GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
-- **Security Group** — Locked down to your IP (SSH), HTTPS/HTTP open for SSL validation
-- **S3 Bucket** — Encrypted backups with automatic cleanup (180 days retention)
-- **IAM Role & Instance Profile** — Secure EC2-to-S3 access without hardcoded credentials
-- **Elastic IP** — Static public IP that persists across restarts
-- **Route53 DNS** — A record pointing your domain to the Elastic IP
-- **SSH Key Pair** — Auto-generated 4096-bit RSA key
-- **SSM Integration** — AWS Systems Manager for secure access
+- **EC2 Instance** (t3.large, T3 unlimited mode), 8GB RAM, Ubuntu 24.04 LTS, auto-updates enabled
+- **Security Group**: Locked down to your IP (SSH), HTTPS/HTTP open for SSL validation
+- **S3 Bucket**: Encrypted backups with automatic cleanup (180 days retention)
+- **IAM Role & Instance Profile**: Secure EC2-to-S3 access without hardcoded credentials
+- **Elastic IP**: Static public IP that persists across restarts
+- **Route53 DNS**: A record pointing your domain to the Elastic IP
+- **SSH Key Pair**: Auto-generated 4096-bit RSA key
+- **SSM Integration**: AWS Systems Manager for secure access
 
 ### Software Stack
 
-- **Node.js 22** — Latest LTS version
-- **OpenClaw** — Installed via npm for easy updates
-- **Docker** — Required for OpenClaw's container management
-- **Nginx** — HTTPS reverse proxy with SSL termination
-- **Let's Encrypt SSL** — Free, auto-renewing SSL certificates via Certbot
-- **Systemd Service** — Auto-start on boot with automatic restarts
-- **Management CLI** — Custom `oc` command for operations
+- **Node.js 22**: Latest LTS version
+- **OpenClaw**: Installed via npm for easy updates
+- **Docker**: Required for OpenClaw's container management
+- **Nginx**: HTTPS reverse proxy with SSL termination
+- **Let's Encrypt SSL**: Free, auto-renewing SSL certificates via Certbot
+- **Systemd Service**: Auto-start on boot with automatic restarts
+- **Management CLI**: Custom `oc` command for operations
 
 ### Automation
 
-- **User Data Script** — Automated installation and configuration
-- **SSL Certificate** — Automatic acquisition and renewal via Let's Encrypt
-- **DNS Management** — Route53 A record automatically created
-- **Automated Daily Backups** — Cron job runs daily at 2 AM UTC
-- **Manual Backups** — On-demand backup to S3 via `oc backup` command
-- **S3 Lifecycle Policy** — Automatic deletion after 180 days
-- **GitHub Actions** — CI/CD with Terraform validation and security scanning
+- **User Data Script**: Automated installation and configuration
+- **SSL Certificate**: Automatic acquisition and renewal via Let's Encrypt
+- **DNS Management**: Route53 A record automatically created
+- **Automated Daily Backups**: Cron job runs daily at 2 AM UTC
+- **Manual Backups**: On-demand backup to S3 via `oc backup` command
+- **S3 Lifecycle Policy**: Automatic deletion after 180 days
+- **GitHub Actions**: CI/CD with Terraform validation and security scanning
 
 **Note**: Daily backups run automatically. Additional backups can be configured through OpenClaw's interface if needed.
 
@@ -126,7 +135,7 @@ This Terraform configuration automatically deploys a production-ready OpenClaw i
 | Data transfer | ~$1-2 |
 | **Total** | **~$66-72/month** |
 
-> **Why not t3.medium?** OpenClaw 2026.5.x+ (with externalized plugins like lossless-claw, ACPX, slack, brave, memory-core all loaded) OOMs on 4GB RAM. t3.large (8GB) is the floor. T3 unlimited mode is also enabled so the instance can burn over the 20% CPU baseline without getting throttled to a crawl — pay-per-burst at ~$0.05/vCPU-hour over baseline.
+> **Why not t3.medium?** OpenClaw 2026.9.x (with externalized plugins like lossless-claw, ACPX, slack, brave, memory-core all loaded) OOMs on 4GB RAM. t3.large (8GB) is the floor. T3 unlimited mode is also enabled so the instance can burn over the 20% CPU baseline without getting throttled to a crawl, pay-per-burst at ~$0.05/vCPU-hour over baseline.
 
 ---
 
@@ -223,7 +232,7 @@ The EC2 instance will auto-install OpenClaw, nginx, and obtain SSL certificate (
 terraform output -raw dashboard_url_with_token
 ```
 
-Open the HTTPS URL in your browser — done! 🎉
+Open the HTTPS URL in your browser, done! 🎉
 
 **Note**: The first time you access the dashboard, you'll need to approve device pairing via SSH (see Device Pairing section). Daily S3 backups run automatically at 2 AM UTC. Configure Slack integration through OpenClaw's dashboard after deployment.
 
@@ -249,15 +258,15 @@ Open the HTTPS URL in your browser — done! 🎉
 
 ## 🔒 Security Features
 
-- **HTTPS/SSL** — Valid Let's Encrypt certificates with auto-renewal
-- **IP Restriction** — Only your IP can access SSH (22)
-- **Device Pairing** — Secure multi-device authentication system
-- **IMDSv2** — Instance metadata service v2 required
-- **Encrypted EBS** — Root volume encrypted at rest
-- **Encrypted S3** — AES-256 server-side encryption
-- **No Public S3** — Bucket blocks all public access
-- **IAM Role** — EC2 uses role-based access (no hardcoded credentials)
-- **Token Auth** — 48-character random gateway token
+- **HTTPS/SSL**: Valid Let's Encrypt certificates with auto-renewal
+- **IP Restriction**: Only your IP can access SSH (22)
+- **Device Pairing**: Secure multi-device authentication system
+- **IMDSv2**: Instance metadata service v2 required
+- **Encrypted EBS**: Root volume encrypted at rest
+- **Encrypted S3**: AES-256 server-side encryption
+- **No Public S3**: Bucket blocks all public access
+- **IAM Role**: EC2 uses role-based access (no hardcoded credentials)
+- **Token Auth**: 48-character random gateway token
 
 ---
 
@@ -280,7 +289,7 @@ Then use the `oc` command:
 | `oc start` | Start OpenClaw |
 | `oc backup` | Manual backup to S3 (on-demand) |
 | `oc restore <file>` | Restore from S3 backup |
-| `oc update` | Update OpenClaw to latest |
+| `oc update <version>` | Pin OpenClaw and its plugins to a version, then run doctor |
 | `oc url` | Show dashboard URL with token |
 | `oc token` | Show gateway token |
 
@@ -355,8 +364,8 @@ terraform apply
 # SSH into server
 $(terraform output -raw ssh_command)
 
-# Update
-oc update
+# Update (always pin a version; plugins must match the core)
+oc update 2026.9.2
 ```
 
 ### View backups
@@ -366,7 +375,7 @@ oc update
 aws s3 ls s3://$(terraform output -raw s3_bucket)/backups/
 
 # View automated backup logs
-ssh -i openclaw-key.pem ubuntu@<your-ip>
+ssh -i openclaw-key-default.pem ubuntu@<your-ip>
 tail -f ~/.openclaw/backup.log
 ```
 
@@ -432,11 +441,14 @@ terraform destroy
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `aws_region` | `us-east-1` | AWS region |
-| `instance_type` | `t3.large` | EC2 instance type (required for OpenClaw 2026.5.x+) |
-| `my_ip_cidrs` | — | Your IP(s) for SSH access (required) |
-| `domain_name` | — | Domain name for HTTPS (required) |
-| `email` | — | Email for SSL notifications (required) |
-| `anthropic_api_key` | — | Anthropic API key (required) |
+| `instance_type` | `t3.large` | EC2 instance type. A vCPU quota of 1 forces `t2.small` on a first apply |
+| `openclaw_version` | `2026.9.2` | OpenClaw npm version. Core and all plugins install at this exact version |
+| `node_min_version` | `22.22.3` | Node floor asserted during bootstrap |
+| `manage_dns` | `true` | Create the Route53 A record. Set false in a second workspace |
+| `my_ip_cidrs` | (none) | Your IP(s) for SSH access (required) |
+| `domain_name` | (none) | Domain name for HTTPS (required) |
+| `email` | (none) | Email for SSL notifications (required) |
+| `anthropic_api_key` | (none) | Anthropic API key (required) |
 | `route53_zone_id` | (auto) | Route53 zone ID (optional) |
 
 ---
@@ -446,7 +458,7 @@ terraform destroy
 ### Use a different instance type
 
 ```hcl
-instance_type = "t3.medium"  # $30/month, 4GB RAM (TOO SMALL for OpenClaw 2026.5.x+; will OOM)
+instance_type = "t3.medium"  # $30/month, 4GB RAM (TOO SMALL for OpenClaw 2026.9.x; will OOM)
 instance_type = "t3.large"   # $60/month, 8GB RAM (default, recommended)
 instance_type = "t3.xlarge"  # $120/month, 16GB RAM
 ```
@@ -540,7 +552,7 @@ The EC2 instance has an IAM role automatically configured by Terraform. If backu
 
 **Test backup:**
 ```bash
-ssh -i openclaw-key.pem ubuntu@<your-ip>
+ssh -i openclaw-key-default.pem ubuntu@<your-ip>
 oc backup
 ```
 
@@ -579,7 +591,7 @@ terraform apply
 
 If you need to fix a running instance manually:
 ```bash
-ssh -i openclaw-key.pem ubuntu@<your-ip>
+ssh -i openclaw-key-default.pem ubuntu@<your-ip>
 cd /tmp
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 sudo apt-get install -y unzip
@@ -672,7 +684,7 @@ nano LOCAL_README.md
 - Auto-renewal: Enabled
 
 ## Quick Commands
-ssh -i openclaw-key.pem ubuntu@x.x.x.x
+ssh -i openclaw-key-default.pem ubuntu@x.x.x.x
 terraform output -raw dashboard_url_with_token
 aws s3 ls s3://my-bucket/backups/
 openclaw devices list
@@ -700,7 +712,7 @@ Contributions welcome! Please:
 
 ## 📄 License
 
-[MIT License](LICENSE) — feel free to use, modify, and distribute.
+[MIT License](LICENSE), feel free to use, modify, and distribute.
 
 ---
 
